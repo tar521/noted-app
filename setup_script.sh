@@ -72,4 +72,4 @@ echo -e "${GREEN}✨ SETUP COMPLETE!${NC}"
 echo -e "Access your app at: ${BLUE}http://notes-app${NC}"
 
 # 6. Run
-npm run dev
+nohup npm run dev > /dev/null 2>&1 &
