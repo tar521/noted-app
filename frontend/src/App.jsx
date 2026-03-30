@@ -1,0 +1,55 @@
+import { useState, useEffect } from 'react';
+import { api } from './api';
+import Sidebar from './components/Sidebar';
+import Dashboard from './components/Dashboard';
+import Notes from './components/Notes';
+import Todos from './components/Todos';
+import History from './components/History';
+
+export default function App() {
+  const [tab, setTab] = useState('dashboard');
+  const [folders, setFolders] = useState([]);
+  const [activeFolder, setActiveFolder] = useState(null);
+  const [activeNote, setActiveNote] = useState(null);
+
+  useEffect(() => {
+    api.getFolders().then(setFolders);
+  }, []);
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-surface-0">
+      <Sidebar
+        tab={tab}
+        setTab={setTab}
+        folders={folders}
+        setFolders={setFolders}
+        activeFolder={activeFolder}
+        setActiveFolder={setActiveFolder}
+        activeNote={activeNote}
+        setActiveNote={setActiveNote}
+      />
+
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {tab === 'dashboard' && (
+          <Dashboard
+            folders={folders}
+            setTab={setTab}
+            setActiveFolder={setActiveFolder}
+            setActiveNote={setActiveNote}
+          />
+        )}
+        {tab === 'notes' && (
+          <Notes
+            folders={folders}
+            activeFolder={activeFolder}
+            setActiveFolder={setActiveFolder}
+            activeNote={activeNote}
+            setActiveNote={setActiveNote}
+          />
+        )}
+        {tab === 'todos' && <Todos />}
+        {tab === 'history' && <History />}
+      </main>
+    </div>
+  );
+}
