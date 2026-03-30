@@ -7,6 +7,8 @@ export default defineConfig({
   server: {
     port: 5173,
     // Add allowedHosts here to fix the "Host not allowed" error
+    // This forces Vite to use 127.0.0.1 instead of [::1]
+    host: '127.0.0.1',
     allowedHosts: ['notes-app', 'localhost', '127.0.0.1'],
     proxy: {
       '/api': {
