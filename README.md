@@ -7,93 +7,93 @@ A personal notes and todo tracker. Dark, minimal, fast. Built with React + Vite 
 ## Setup
 
 ### Prerequisites
+
 - Node.js 18+
 - npm
+- Homebrew (Required for Nginx handling on macOS)
 
-### 1. Install root dependencies
+### 1. Install Dependencies
+
+Run this command from the root directory to install all necessary packages for the root, backend, and frontend:
+
 ```bash
-npm install
+npm install && (cd backend && npm install) && (cd frontend && npm install)
 ```
 
-### 2. Install backend dependencies
-```bash
-cd backend && npm install && cd ..
-```
+### 2. Automated Local Domain & Startup Setup
 
-### 3. Install frontend dependencies
+To use `http://notes-app` instead of IP addresses and ports, run the setup script. This script configures Nginx, maps your local hosts file, and registers the app to start automatically when you log in:
+
 ```bash
-cd frontend && npm install && cd ..
+chmod +x setup_script.sh
+./setup_script.sh
 ```
 
 ---
 
-## Running the app
+## Running the App
 
-From the root directory:
+### Automatic Mode
 
-```bash
-npm run dev
-```
+Once `setup_script.sh` has been run once, the app is registered as a macOS Launch Agent. It will start in the background every time you start your laptop and log in.
 
-This starts:
-- **Backend** → `http://localhost:3001` (Express + SQLite)
-- **Frontend** → `http://localhost:5173` (React + Vite)
+### Manual Control Scripts
 
-Open your browser to **http://localhost:5173**
-
----
-
-## Data
-
-Your notes and todos are stored in `backend/data/noted.db` — a single SQLite file on your local machine. Back it up anytime by copying that file.
-
----
-
-## Features
-
-- **Dashboard** — Greeting, stats, recent notes grid, active todos
-- **Notes** — Folder-based organization, rich text editor (bold, italic, headings, lists, code blocks), auto-save
-- **Todos** — Priority levels (high/medium/low), due dates, tags, filters, inline editing
-
----
-
-## Keyboard shortcuts (in notes editor)
-
-| Action | Shortcut |
+| Script | Description |
 |---|---|
-| Bold | `Ctrl/Cmd + B` |
-| Italic | `Ctrl/Cmd + I` |
-| Undo | `Ctrl/Cmd + Z` |
-| Redo | `Ctrl/Cmd + Shift + Z` |
-| Heading 1 | Toolbar |
-| Code block | Toolbar |
+| `./setup_script.sh` | Resets the environment, refreshes Nginx, and ensures the app is running. |
+| `./shutdown.sh` | Stops the app processes for the current session but leaves auto-start enabled for your next boot. |
+| `./hard_shutdown.sh` | Stops the app and unregisters it from startup. Use this if you want to fully disable the background services. |
+
+Access the app at: **http://notes-app**
 
 ---
 
-## Project structure
+## Debugging & Troubleshooting
 
+If you encounter connection issues, check these common fixes:
+
+### 1. "This site can't be reached" (NXDOMAIN)
+
+If your browser cannot find `notes-app`, it might be using DNS-over-HTTPS, which ignores local system settings.
+
+- **Fix:** Go to Browser Settings > System > Disable "Use DNS-over-HTTPS" or set it to "System" provider.
+- **Verify:** Run `ping notes-app` in your terminal to ensure it resolves to `127.0.0.1`.
+
+### 2. "Blocked request. This host is not allowed."
+
+This is a Vite security feature triggered when using a custom domain.
+
+- **Fix:** Ensure `frontend/vite.config.js` contains the following:
+
+```js
+server: {
+  allowedHosts: ['notes-app', 'localhost']
+}
 ```
-noted-app/
-├── package.json          # Root: runs both servers with concurrently
-├── backend/
-│   ├── server.js         # Express entry point (port 3001)
-│   ├── db.js             # SQLite setup + schema
-│   ├── data/             # noted.db lives here (auto-created)
-│   └── routes/
-│       ├── folders.js
-│       ├── notes.js
-│       └── todos.js
-└── frontend/
-    ├── vite.config.js
-    ├── src/
-    │   ├── main.jsx
-    │   ├── App.jsx
-    │   ├── api.js
-    │   ├── index.css
-    │   └── components/
-    │       ├── Sidebar.jsx
-    │       ├── Dashboard.jsx
-    │       ├── Notes.jsx
-    │       ├── NoteEditor.jsx
-    │       └── Todos.jsx
-```
+
+### 3. Connection Refused / Nginx Errors
+
+If Nginx isn't routing traffic properly:
+
+- Check Nginx status: `sudo brew services list`
+- Test config: `sudo nginx -t`
+- Check logs: `tail -n 20 $(brew --prefix)/var/log/nginx/error.log`
+
+---
+
+## Data & Project Structure
+
+### Local Database
+
+Your data is stored in `backend/data/noted.db`.
+
+> **Note:** This file is excluded from Git via `.gitignore` to keep your personal notes private and prevent binary merge conflicts.
+
+### Directory Overview
+
+| Path | Description |
+|---|---|
+| `backend/` | Express server, SQLite database, and API routes. |
+| `frontend/` | React source code and Vite configuration. |
+| `setup_script.sh` | The main entry point for environment configuration. |
