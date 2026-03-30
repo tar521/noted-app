@@ -34,3 +34,8 @@ yarn-error.log*
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Local SSL Certificates
+certs/*.pem
+certs/*.crt
+certs/*.key
