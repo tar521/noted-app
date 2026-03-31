@@ -37,7 +37,7 @@ chmod +x setup_script.sh
 2. Run:
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force
-.\setup.ps1
+.\setup_script.ps1
 ```
 
 ---
@@ -52,7 +52,7 @@ Once the setup script has been run, the app is registered as a background servic
 
 | macOS Script | Windows Script | Description |
 |---|---|---|
-| `./setup_script.sh` | `.\setup.ps1` | Resets the environment, refreshes Nginx, and ensures the app is running. |
+| `./setup_script.sh` | `.\setup_script.ps1` | Resets the environment, refreshes Nginx, and ensures the app is running. |
 | `./shutdown.sh` | `.\shutdown.ps1` | Stops the app processes for the current session but leaves auto-start enabled. |
 | `./hard_shutdown.sh` | `.\hard_shutdown.ps1` | Stops the app, unregisters it from startup, and (on macOS) disables the sudo bypass. |
 | `./disable_sudo_bypass.sh` | N/A | Standalone script to disable passwordless sudo for macOS. |
