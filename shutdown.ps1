@@ -14,7 +14,7 @@ foreach ($port in @(5173, 3001)) {
 }
 
 # 2. Stop Nginx
-Stop-Process -Name nginx -ErrorAction SilentlyContinue
+Stop-Process -Name nginx -Force -ErrorAction SilentlyContinue
 Write-Host "Nginx stopped" -ForegroundColor Gray
 
 Write-Host "App stopped. It will still start automatically on next login." -ForegroundColor Yellow
