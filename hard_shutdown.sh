@@ -25,6 +25,13 @@ sudo brew services stop nginx
 FE_PID=$(lsof -t -i:5173)
 BE_PID=$(lsof -t -i:3001)
 [ -n "$FE_PID" ] && kill -9 $FE_PID
-[ -n "$BE_PID" ] && kill -9 $BE_PID
+[n "$BE_PID" ] && kill -9 $BE_PID
+
+# 4. Remove Sudo Bypass
+SUDOERS_FILE="/etc/sudoers.d/noted-app-$(whoami)"
+if [ -f "$SUDOERS_FILE" ]; then
+    sudo rm "$SUDOERS_FILE"
+    echo -e "${YELLOW}• Passwordless sudo disabled.${NC}"
+fi
 
 echo -e "${RED}✔ Project fully unregistered and stopped.${NC}"

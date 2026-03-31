@@ -8,13 +8,14 @@ A personal notes and todo tracker. Dark, minimal, fast. Built with React + Vite 
 
 ### Prerequisites
 
-- Node.js 18+
-- npm
-- Homebrew (Required for Nginx handling on macOS)
+- **Node.js 18+**
+- **npm**
+- **Homebrew** (Required for macOS setup)
+- **Chocolatey** (Will be installed automatically by the Windows setup script)
 
-### 1. Install Dependencies
+### 1. Install Dependencies (Manual)
 
-Run this command from the root directory to install all necessary packages for the root, backend, and frontend:
+If you prefer to install dependencies manually before running scripts:
 
 ```bash
 npm install && (cd backend && npm install) && (cd frontend && npm install)
@@ -22,11 +23,21 @@ npm install && (cd backend && npm install) && (cd frontend && npm install)
 
 ### 2. Automated Local Domain & Startup Setup
 
-To use `http://notes-app` instead of IP addresses and ports, run the setup script. This script configures Nginx, maps your local hosts file, and registers the app to start automatically when you log in:
+To use `http://notes-app` instead of IP addresses and ports, run the setup script for your operating system. These scripts configure Nginx, map your local hosts file, and register the app to start automatically on login.
 
+#### **macOS**
 ```bash
 chmod +x setup_script.sh
 ./setup_script.sh
+```
+*Note: This script will ask for your password once to enable passwordless sudo for the app's services and to configure Nginx.*
+
+#### **Windows**
+1. Open **PowerShell** as an **Administrator**.
+2. Run:
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force
+.\setup.ps1
 ```
 
 ---
@@ -35,65 +46,73 @@ chmod +x setup_script.sh
 
 ### Automatic Mode
 
-Once `setup_script.sh` has been run once, the app is registered as a macOS Launch Agent. It will start in the background every time you start your laptop and log in.
+Once the setup script has been run, the app is registered as a background service (**Launch Agent** on macOS, **Startup Shortcut** on Windows). It will start automatically every time you log in.
 
 ### Manual Control Scripts
 
-| Script | Description |
-|---|---|
-| `./setup_script.sh` | Resets the environment, refreshes Nginx, and ensures the app is running. |
-| `./shutdown.sh` | Stops the app processes for the current session but leaves auto-start enabled for your next boot. |
-| `./hard_shutdown.sh` | Stops the app and unregisters it from startup. Use this if you want to fully disable the background services. |
+| macOS Script | Windows Script | Description |
+|---|---|---|
+| `./setup_script.sh` | `.\setup.ps1` | Resets the environment, refreshes Nginx, and ensures the app is running. |
+| `./shutdown.sh` | `.\shutdown.ps1` | Stops the app processes for the current session but leaves auto-start enabled. |
+| `./hard_shutdown.sh` | `.\hard_shutdown.ps1` | Stops the app, unregisters it from startup, and (on macOS) disables the sudo bypass. |
+| `./disable_sudo_bypass.sh` | N/A | Standalone script to disable passwordless sudo for macOS. |
 
 Access the app at: **http://notes-app**
 
 ---
 
-## Debugging & Troubleshooting
+## Troubleshooting
 
-If you encounter connection issues, check these common fixes:
+### **Common (Both OS's)**
 
-### 1. "This site can't be reached" (NXDOMAIN)
-
-If your browser cannot find `notes-app`, it might be using DNS-over-HTTPS, which ignores local system settings.
-
-- **Fix:** Go to Browser Settings > System > Disable "Use DNS-over-HTTPS" or set it to "System" provider.
+#### **1. "This site can't be reached" (NXDOMAIN)**
+If your browser cannot find `notes-app`, it might be using DNS-over-HTTPS.
+- **Fix:** Go to Browser Settings > Privacy & Security > Security > Disable "Use secure DNS" or set it to "System" provider.
 - **Verify:** Run `ping notes-app` in your terminal to ensure it resolves to `127.0.0.1`.
 
-### 2. "Blocked request. This host is not allowed."
+---
 
-This is a Vite security feature triggered when using a custom domain.
+### **macOS Specific**
 
-- **Fix:** Ensure `frontend/vite.config.js` contains the following:
+#### **1. Launch Agent not starting**
+If the app doesn't start on login, check the logs:
+- `cat /tmp/noted-app.out.log`
+- `cat /tmp/noted-app.err.log`
+- Manually reload: `launchctl load ~/Library/LaunchAgents/com.$(whoami).notedapp.plist`
 
-```js
-server: {
-  allowedHosts: ['notes-app', 'localhost']
-}
-```
+#### **2. Sudo Bypass issues**
+If Nginx fails to restart because of permissions:
+- Ensure `/etc/sudoers.d/noted-app-$(whoami)` exists and has `440` permissions.
+- Run `./disable_sudo_bypass.sh` and then re-run `./setup_script.sh`.
 
-### 3. Connection Refused / Nginx Errors
+---
 
-If Nginx isn't routing traffic properly:
+### **Windows Specific**
 
-- Check Nginx status: `sudo brew services list`
-- Test config: `sudo nginx -t`
-- Check logs: `tail -n 20 $(brew --prefix)/var/log/nginx/error.log`
+#### **1. "Scripts are disabled on this system"**
+PowerShell blocks scripts by default for security.
+- **Fix:** Run `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` in an Admin PowerShell window.
+
+#### **2. Nginx "Connection Refused"**
+- Ensure you ran the script as **Administrator**.
+- Check if Nginx is running in Task Manager.
+- Check the config: `C:\tools\nginx\conf\servers\notes-app.conf` should exist.
+
+#### **3. Port 80 Conflicts**
+If another service (like IIS or Skype) is using port 80, Nginx will fail to start.
+- **Fix:** Stop the conflicting service or change the `listen 80;` line in the Nginx config to another port (e.g., `8080`).
 
 ---
 
 ## Data & Project Structure
 
 ### Local Database
-
-Your data is stored in `backend/data/noted.db`.
-
-> **Note:** This file is excluded from Git via `.gitignore` to keep your personal notes private and prevent binary merge conflicts.
+Your data is stored in `backend/data/noted.db`. This file is excluded from Git to keep your notes private.
 
 ### Directory Overview
-
 | Path | Description |
 |---|---|
-| `backend/` | Express server, SQLite database, and API routes. |
+| `backend/` | Express server and SQLite database. |
 | `frontend/` | React source code and Vite configuration. |
-| `setup_script.sh` | The main entry point for environment configuration. |
+| `*.sh` | macOS automation scripts. |
+| `*.ps1` | Windows automation scripts. |

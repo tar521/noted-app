@@ -9,6 +9,14 @@ NC='\033[0m'
 
 PROJECT_ROOT=$(pwd)
 
+# 0. Sudo Bypass Setup
+SUDOERS_FILE="/etc/sudoers.d/noted-app-$(whoami)"
+if [ ! -f "$SUDOERS_FILE" ]; then
+    echo -e "${BLUE}🔐 Enabling passwordless sudo for current user...${NC}"
+    echo "$(whoami) ALL=(ALL) NOPASSWD: ALL" | sudo tee "$SUDOERS_FILE" > /dev/null
+    sudo chmod 440 "$SUDOERS_FILE"
+fi
+
 echo -e "${BLUE}🚀 Starting Noted Project (HTTP Mode)...${NC}"
 
 # 1. Dependency Check
@@ -68,8 +76,37 @@ sudo brew services restart nginx
 echo -e "${BLUE}📂 Installing NPM dependencies...${NC}"
 npm install && (cd backend && npm install) && (cd frontend && npm install)
 
+# 6. Create & Register Launch Agent (Auto-start)
+LABEL="com.$(whoami).notedapp"
+PLIST_PATH="$HOME/Library/LaunchAgents/$LABEL.plist"
+
+echo -e "${BLUE}🚀 Registering Launch Agent for auto-start...${NC}"
+
+cat <<EOF > "$PLIST_PATH"
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>$LABEL</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>$(which npm)</string>
+        <string>run</string>
+        <string>dev</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>$PROJECT_ROOT</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+</dict>
+</plist>
+
+# Load the new agent
+launchctl unload "$PLIST_PATH" 2>/dev/null
+launchctl load "$PLIST_PATH"
+
 echo -e "${GREEN}✨ SETUP COMPLETE!${NC}"
 echo -e "Access your app at: ${BLUE}http://notes-app${NC}"
-
-# 6. Run
-nohup npm run dev > /dev/null 2>&1 &
