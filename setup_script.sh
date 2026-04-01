@@ -9,6 +9,14 @@ NC='\033[0m'
 
 PROJECT_ROOT=$(pwd)
 
+# 0. Sudo Bypass Setup
+SUDOERS_FILE="/etc/sudoers.d/noted-app-$(whoami)"
+if [ ! -f "$SUDOERS_FILE" ]; then
+    echo -e "${BLUE}🔐 Enabling passwordless sudo for current user...${NC}"
+    echo "$(whoami) ALL=(ALL) NOPASSWD: ALL" | sudo tee "$SUDOERS_FILE" > /dev/null
+    sudo chmod 440 "$SUDOERS_FILE"
+fi
+
 echo -e "${BLUE}🚀 Starting Noted Project (HTTP Mode)...${NC}"
 
 # 1. Dependency Check
@@ -68,8 +76,47 @@ sudo brew services restart nginx
 echo -e "${BLUE}📂 Installing NPM dependencies...${NC}"
 npm install && (cd backend && npm install) && (cd frontend && npm install)
 
+# 6. Create & Register Launch Agent (Auto-start)
+LABEL="com.$(whoami).notedapp"
+PLIST_PATH="$HOME/Library/LaunchAgents/$LABEL.plist"
+
+echo -e "${BLUE}🚀 Registering Launch Agent for auto-start...${NC}"
+
+cat <<EOF > "$PLIST_PATH"
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>$LABEL</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>$(which npm)</string>
+        <string>run</string>
+        <string>dev</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>$PROJECT_ROOT</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>$(dirname $(which node)):/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardErrorPath</key>
+    <string>/tmp/noted-app.err</string>
+    <key>StandardOutPath</key>
+    <string>/tmp/noted-app.out</string>
+</dict>
+</plist>
+EOF
+
+# Load the new agent (macOS 10.10+)
+launchctl bootout "gui/$(id -u)" "$PLIST_PATH" 2>/dev/null
+launchctl bootstrap "gui/$(id -u)" "$PLIST_PATH"
+
 echo -e "${GREEN}✨ SETUP COMPLETE!${NC}"
 echo -e "Access your app at: ${BLUE}http://notes-app${NC}"
-
-# 6. Run
-nohup npm run dev > /dev/null 2>&1 &

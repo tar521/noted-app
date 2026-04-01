@@ -9,17 +9,20 @@ LABEL="com.$(whoami).notedapp"
 
 echo -e "${BLUE}🛑 Temporarily stopping Noted Project...${NC}"
 
-# 1. Stop the Launch Agent without unloading it
-# This kills the processes but keeps the 'on-boot' instruction active.
-launchctl stop $LABEL 2>/dev/null
+# 1. Stop the Launch Agent service (without unloading it)
+# This will kill the processes but keep the agent ready for next login.
+launchctl kill SIGTERM "gui/$(id -u)/$LABEL" 2>/dev/null
 
-# 2. Stop Nginx (Standard Homebrew stop)
+# 2. Stop Nginx
 sudo brew services stop nginx
 
 # 3. Cleanup any orphaned Node processes
-FE_PID=$(lsof -t -i:5173)
-BE_PID=$(lsof -t -i:3001)
-[ -n "$FE_PID" ] && kill -9 $FE_PID
-[ -n "$BE_PID" ] && kill -9 $BE_PID
+echo -e "${BLUE}🧹 Cleaning up orphaned processes...${NC}"
+for port in 5173 3001; do
+    PID=$(lsof -t -i:$port)
+    if [ -n "$PID" ]; then
+        kill -15 $PID 2>/dev/null || kill -9 $PID 2>/dev/null
+    fi
+done
 
 echo -e "${RED}✔ App stopped. It will still start automatically on next login.${NC}"
