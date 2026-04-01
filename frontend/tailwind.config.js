@@ -27,9 +27,11 @@ export default {
           faint: '#55556a',
         },
         priority: {
+          urgent: '#ef4444',
           high: '#f87171',
           medium: '#fb923c',
           low: '#4ade80',
+          backlog: '#94a3b8',
         }
       }
     },

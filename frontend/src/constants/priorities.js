@@ -1,0 +1,31 @@
+export const PRIORITIES = {
+  URGENT: 'urgent',
+  HIGH: 'high',
+  MEDIUM: 'medium',
+  LOW: 'low',
+  BACKLOG: 'backlog'
+};
+
+export const PRIORITY_LIST = [
+  PRIORITIES.URGENT,
+  PRIORITIES.HIGH,
+  PRIORITIES.MEDIUM,
+  PRIORITIES.LOW,
+  PRIORITIES.BACKLOG
+];
+
+export const PRIORITY_COLORS = {
+  [PRIORITIES.URGENT]: '#ef4444',
+  [PRIORITIES.HIGH]: '#f87171',
+  [PRIORITIES.MEDIUM]: '#fb923c',
+  [PRIORITIES.LOW]: '#4ade80',
+  [PRIORITIES.BACKLOG]: '#94a3b8'
+};
+
+export const PRIORITY_BG = {
+  [PRIORITIES.URGENT]: 'rgba(239, 68, 68, 0.1)',
+  [PRIORITIES.HIGH]: 'rgba(248, 113, 113, 0.1)',
+  [PRIORITIES.MEDIUM]: 'rgba(251, 146, 60, 0.1)',
+  [PRIORITIES.LOW]: 'rgba(74, 222, 128, 0.1)',
+  [PRIORITIES.BACKLOG]: 'rgba(148, 163, 184, 0.1)'
+};

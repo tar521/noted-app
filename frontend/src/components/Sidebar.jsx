@@ -126,7 +126,7 @@ export default function Sidebar({ tab, setTab, folders, setFolders, activeFolder
                   <span className="truncate flex-1 text-left">{folder.name}</span>
                   <span
                     onClick={(e) => deleteFolder(e, folder.id)}
-                    className="opacity-0 group-hover:opacity-100 text-ink-faint hover:text-priority-high text-xs transition-all cursor-pointer"
+                    className="opacity-0 group-hover:opacity-100 text-ink-faint hover:text-priority-urgent text-xs transition-all cursor-pointer"
                   >✕</span>
                 </button>
               )}
