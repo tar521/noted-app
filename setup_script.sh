@@ -97,16 +97,26 @@ cat <<EOF > "$PLIST_PATH"
     </array>
     <key>WorkingDirectory</key>
     <string>$PROJECT_ROOT</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>$(dirname $(which node)):/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
     <true/>
+    <key>StandardErrorPath</key>
+    <string>/tmp/noted-app.err</string>
+    <key>StandardOutPath</key>
+    <string>/tmp/noted-app.out</string>
 </dict>
 </plist>
+EOF
 
-# Load the new agent
-launchctl unload "$PLIST_PATH" 2>/dev/null
-launchctl load "$PLIST_PATH"
+# Load the new agent (macOS 10.10+)
+launchctl bootout "gui/$(id -u)" "$PLIST_PATH" 2>/dev/null
+launchctl bootstrap "gui/$(id -u)" "$PLIST_PATH"
 
 echo -e "${GREEN}✨ SETUP COMPLETE!${NC}"
 echo -e "Access your app at: ${BLUE}http://notes-app${NC}"
