@@ -29,21 +29,24 @@ router.get('/', (req, res) => {
 // POST /api/todos
 router.post('/', (req, res) => {
   const db = req.app.locals.db;
-  const { title, priority, due_date, tags } = req.body;
+  const { title, priority, due_date, tags, status } = req.body;
   
   // 1. Get the current minimum order_index to place the new todo at the top
   const minOrder = db.get('SELECT MIN(order_index) as min_idx FROM todos');
   const newOrderIndex = (minOrder && minOrder.min_idx !== null) ? minOrder.min_idx - 1 : 0;
 
+  const defaultStatus = status || 'Not Started';
+
   // 2. Insert with the new order_index
   const { lastInsertRowid } = db.run(
-    "INSERT INTO todos (title, priority, due_date, tags, order_index) VALUES (?, ?, ?, ?, ?)",
+    "INSERT INTO todos (title, priority, due_date, tags, order_index, status) VALUES (?, ?, ?, ?, ?, ?)",
     [
       title, 
       priority || 'medium', 
       due_date || null, 
       JSON.stringify(tags || []), 
-      newOrderIndex
+      newOrderIndex,
+      defaultStatus
     ]
   );
 
@@ -68,19 +71,60 @@ router.put('/reorder', (req, res) => {
   res.json({ success: true });
 });
 
+// PUT /api/todos/kanban-reorder
+router.put('/kanban-reorder', (req, res) => {
+  const { run, db } = req.app.locals.db;
+  const { columns } = req.body; // { 'Not Started': [id1, id2], 'In Progress': [id3] }
+
+  if (!columns || typeof columns !== 'object') return res.status(400).json({ error: 'Invalid columns' });
+
+  // Update status and kanban_order_index for all items in each column
+  Object.entries(columns).forEach(([status, ids]) => {
+    if (!Array.isArray(ids)) return;
+    ids.forEach((id, index) => {
+      // Also update 'completed' based on status if it's 'Merged/Completed'
+      const completed = (status === 'Merged/Completed' ? 1 : 0);
+      req.app.locals.db.run('UPDATE todos SET status = ?, kanban_order_index = ?, completed = ? WHERE id = ?', [status, index, completed, id]);
+    });
+  });
+
+  res.json({ success: true });
+});
+
 // PATCH /api/todos/:id
 router.patch('/:id', (req, res) => {
   const db = req.app.locals.db;
   const todo = db.get('SELECT * FROM todos WHERE id = ?', [req.params.id]);
   if (!todo) return res.status(404).json({ error: 'Todo not found' });
 
-  const { title, completed, priority, due_date, tags } = req.body;
+  let { title, completed, priority, due_date, tags, status } = req.body;
+
+  // Sync logic: If completed is updated, update status
+  if (completed !== undefined && status === undefined) {
+    status = completed ? 'Merged/Completed' : 'Not Started';
+  }
+  // If status is updated, update completed
+  if (status !== undefined && completed === undefined) {
+    completed = (status === 'Merged/Completed');
+  }
 
   // Log activity BEFORE the update to have original state
   let activityType = null;
   let activityLabel = null;
 
-  if (completed !== undefined) {
+  if (status !== undefined && status !== todo.status) {
+    activityType = 'todo_updated';
+    activityLabel = `Changed status to "${status}" for: ${todo.title}`;
+    
+    // Check if it's a completion/reopen via status
+    if (status === 'Merged/Completed' && todo.status !== 'Merged/Completed') {
+      activityType = 'todo_completed';
+      activityLabel = `Completed todo: ${todo.title}`;
+    } else if (status !== 'Merged/Completed' && todo.status === 'Merged/Completed') {
+      activityType = 'todo_reopened';
+      activityLabel = `Reopened todo: ${todo.title}`;
+    }
+  } else if (completed !== undefined) {
     const isCurrentlyCompleted = todo.completed === 1;
     const willBeCompleted = !!completed;
     if (willBeCompleted !== isCurrentlyCompleted) {
@@ -104,6 +148,7 @@ router.patch('/:id', (req, res) => {
   db.run(`UPDATE todos SET 
     title = ?, 
     completed = ?, 
+    status = ?,
     priority = ?, 
     due_date = ?, 
     tags = ?, 
@@ -112,6 +157,7 @@ router.patch('/:id', (req, res) => {
     [
       title ?? todo.title,
       completedVal,
+      status ?? todo.status,
       priority ?? todo.priority,
       due_date ?? todo.due_date,
       tags ? JSON.stringify(tags) : todo.tags,
