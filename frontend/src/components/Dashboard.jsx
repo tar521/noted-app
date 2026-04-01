@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
-
-const PRIORITY_COLORS = { high: '#f87171', medium: '#fb923c', low: '#4ade80' };
-const PRIORITY_BG = { high: 'rgba(248,113,113,0.08)', medium: 'rgba(251,146,60,0.08)', low: 'rgba(74,222,128,0.08)' };
+import { PRIORITY_COLORS, PRIORITY_BG } from '../constants/priorities';
 
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();

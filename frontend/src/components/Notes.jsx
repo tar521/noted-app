@@ -105,7 +105,7 @@ export default function Notes({ folders, activeFolder, setActiveFolder, activeNo
               >
                 <div className="flex items-start justify-between gap-1">
                   <p className={`text-sm truncate ${activeNote?.id === note.id ? 'text-ink' : 'text-ink-muted'}`}>{note.title || 'Untitled'}</p>
-                  <button onClick={e => deleteNote(e, note.id)} className="opacity-0 group-hover:opacity-100 text-ink-faint hover:text-priority-high text-xs shrink-0 transition-all">✕</button>
+                  <button onClick={e => deleteNote(e, note.id)} className="opacity-0 group-hover:opacity-100 text-ink-faint hover:text-priority-urgent text-xs shrink-0 transition-all">✕</button>
                 </div>
                 <p className="text-xs text-ink-faint mt-0.5">{timeAgo(note.updated_at)}</p>
               </button>

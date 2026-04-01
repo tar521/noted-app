@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-
-const PRIORITIES = ['high', 'medium', 'low'];
-const PRIORITY_COLORS = { high: '#f87171', medium: '#fb923c', low: '#4ade80' };
-const PRIORITY_BG = { high: 'rgba(248,113,113,0.1)', medium: 'rgba(251,146,60,0.1)', low: 'rgba(74,222,128,0.1)' };
+import { PRIORITIES, PRIORITY_LIST, PRIORITY_COLORS, PRIORITY_BG } from '../constants/priorities';
 
 function TodoCard({ todo, onToggle, onDelete, onUpdate }) {
   const [editing, setEditing] = useState(false);
@@ -77,7 +74,7 @@ function TodoCard({ todo, onToggle, onDelete, onUpdate }) {
               className="text-xs px-2 py-0.5 rounded-full border outline-none bg-surface-2 cursor-pointer"
               style={{ color: PRIORITY_COLORS[todo.priority], borderColor: PRIORITY_COLORS[todo.priority] + '60' }}
             >
-              {PRIORITIES.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+              {PRIORITY_LIST.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
             </select>
 
             {/* Due date */}
@@ -92,7 +89,7 @@ function TodoCard({ todo, onToggle, onDelete, onUpdate }) {
             {Array.isArray(todo.tags) && todo.tags.map(tag => (
               <span key={tag} className="flex items-center gap-1 text-xs bg-surface-3 text-ink-muted rounded-full px-2 py-0.5">
                 #{tag}
-                <button onClick={() => removeTag(tag)} className="hover:text-priority-high text-ink-faint">×</button>
+                <button onClick={() => removeTag(tag)} className="hover:text-priority-urgent text-ink-faint">×</button>
               </span>
             ))}
             <input
@@ -108,7 +105,7 @@ function TodoCard({ todo, onToggle, onDelete, onUpdate }) {
         {/* Delete */}
         <button
           onClick={() => onDelete(todo.id)}
-          className="opacity-0 group-hover:opacity-100 text-ink-faint hover:text-priority-high text-xs transition-all shrink-0"
+          className="opacity-0 group-hover:opacity-100 text-ink-faint hover:text-priority-urgent text-xs transition-all shrink-0"
         >✕</button>
       </div>
     </div>
@@ -120,7 +117,7 @@ export default function Todos() {
   const [filter, setFilter] = useState('all'); // all | active | completed
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [newTitle, setNewTitle] = useState('');
-  const [newPriority, setNewPriority] = useState('medium');
+  const [newPriority, setNewPriority] = useState(PRIORITIES.MEDIUM);
   const [newDue, setNewDue] = useState('');
   const [showForm, setShowForm] = useState(false);
 
@@ -143,7 +140,7 @@ export default function Todos() {
     setTodos(prev => [todo, ...prev]);
     setNewTitle(''); 
     setNewDue(''); 
-    setNewPriority('medium'); 
+    setNewPriority(PRIORITIES.MEDIUM); 
     setShowForm(false);
   }
 
@@ -247,7 +244,7 @@ export default function Todos() {
                 onChange={e => setNewPriority(e.target.value)}
                 className="bg-surface-3 border border-surface-4 rounded-lg px-3 py-2 text-sm text-ink outline-none cursor-pointer"
               >
-                {PRIORITIES.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)} priority</option>)}
+                {PRIORITY_LIST.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)} priority</option>)}
               </select>
               <input
                 type="date"
@@ -275,7 +272,7 @@ export default function Todos() {
             >{f}</button>
           ))}
           <span className="w-px h-4 bg-surface-3" />
-          {['all', ...PRIORITIES].map(p => (
+          {['all', ...PRIORITY_LIST].map(p => (
               <button
                 key={p}
                 onClick={() => setPriorityFilter(p)}
@@ -288,7 +285,7 @@ export default function Todos() {
             <button 
               onClick={() => setHideCompleted(!hideCompleted)}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                hideCompleted ? 'bg-priority-high/10 text-priority-high' : 'bg-surface-3 text-ink-muted'
+                hideCompleted ? 'bg-priority-urgent/10 text-priority-urgent' : 'bg-surface-3 text-ink-muted'
               }`}
             >
               {hideCompleted ? '✕ Hiding Completed' : '👁 Showing All'}
