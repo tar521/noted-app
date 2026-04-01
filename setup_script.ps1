@@ -109,16 +109,25 @@ Start-Process $NginxExePath -WorkingDirectory $NginxDir
 
 
 # 7. Create Auto-start Shortcut
+Write-Host "Creating silent auto-start launcher..." -ForegroundColor Blue
+$LauncherFile = Join-Path $ProjectRoot "start_app.vbs"
+$VbsContent = @"
+Set WshShell = CreateObject("WScript.Shell")
+WshShell.Run "powershell.exe -WindowStyle Hidden -Command ""Set-Location '$ProjectRoot'; npm run dev""", 0, False
+"@
+$VbsContent | Out-File -FilePath $LauncherFile -Encoding ascii
+
 $WshShell = New-Object -ComObject WScript.Shell
 $Shortcut = $WshShell.CreateShortcut("$StartupFolder\NotedApp.lnk")
-$Shortcut.TargetPath = "powershell.exe"
-$Shortcut.Arguments = "-WindowStyle Hidden -Command ""Set-Location '$ProjectRoot'; npm run dev"""
+$Shortcut.TargetPath = "wscript.exe"
+$Shortcut.Arguments = """$LauncherFile"""
 $Shortcut.WorkingDirectory = "$ProjectRoot"
 $Shortcut.Save()
 
 # 8. Start the App Now
-Write-Host "Starting the app in a background window..." -ForegroundColor Blue
-Start-Process "powershell.exe" -ArgumentList "-WindowStyle Hidden -Command ""Set-Location '$ProjectRoot'; npm run dev""" -WorkingDirectory "$ProjectRoot"
+Write-Host "Starting the app silently..." -ForegroundColor Blue
+Start-Process "wscript.exe" -ArgumentList """$LauncherFile""" -WorkingDirectory "$ProjectRoot"
+
 
 Write-Host "SETUP COMPLETE!" -ForegroundColor Green
 Write-Host "Access your app at: http://notes-app" -ForegroundColor Cyan
