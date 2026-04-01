@@ -2,10 +2,14 @@ const express = require('express');
 const router = express.Router();
 
 function log(db, type, entity, entity_id, label, meta = {}) {
-  db.run(
-    "INSERT INTO activity_log (type, entity, entity_id, label, meta) VALUES (?, ?, ?, ?, ?)",
-    [type, entity, entity_id, label, JSON.stringify(meta)]
-  );
+  try {
+    db.run(
+      "INSERT INTO activity_log (type, entity, entity_id, label, meta) VALUES (?, ?, ?, ?, ?)",
+      [type, entity, entity_id, label, JSON.stringify(meta)]
+    );
+  } catch (err) {
+    console.error(`[ACTIVITY LOG ERROR] ${err.message}`);
+  }
 }
 
 // GET /api/todos
@@ -72,7 +76,29 @@ router.patch('/:id', (req, res) => {
 
   const { title, completed, priority, due_date, tags } = req.body;
 
-  // Handle the boolean-to-integer conversion for SQLite
+  // Log activity BEFORE the update to have original state
+  let activityType = null;
+  let activityLabel = null;
+
+  if (completed !== undefined) {
+    const isCurrentlyCompleted = todo.completed === 1;
+    const willBeCompleted = !!completed;
+    if (willBeCompleted !== isCurrentlyCompleted) {
+      activityType = willBeCompleted ? 'todo_completed' : 'todo_reopened';
+      activityLabel = willBeCompleted ? `Completed todo: ${todo.title}` : `Reopened todo: ${todo.title}`;
+    }
+  } else if (title && title !== todo.title) {
+    activityType = 'todo_updated';
+    activityLabel = `Renamed todo to: ${title}`;
+  } else if (priority && priority !== todo.priority) {
+    activityType = 'todo_updated';
+    activityLabel = `Updated priority for: ${todo.title}`;
+  }
+
+  if (activityType) {
+    log(db, activityType, 'todo', parseInt(req.params.id), activityLabel);
+  }
+
   const completedVal = completed !== undefined ? (completed ? 1 : 0) : todo.completed;
 
   db.run(`UPDATE todos SET 
@@ -88,7 +114,7 @@ router.patch('/:id', (req, res) => {
       completedVal,
       priority ?? todo.priority,
       due_date ?? todo.due_date,
-      tags ? JSON.stringify(tags) : todo.tags, // STRINGIFY here
+      tags ? JSON.stringify(tags) : todo.tags,
       req.params.id
     ]
   );

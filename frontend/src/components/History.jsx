@@ -39,7 +39,9 @@ function groupByDay(entries) {
 const FILTERS = [
   { value: 'all',            label: 'All activity' },
   { value: 'todo_completed', label: 'Completions' },
+  { value: 'todo_reopened',  label: 'Reopened' },
   { value: 'todo_created',   label: 'Created todos' },
+  { value: 'todo_updated',   label: 'Todo edits' },
   { value: 'note_created',   label: 'Created notes' },
   { value: 'note_updated',   label: 'Note edits' },
   { value: 'todo_deleted',   label: 'Deletions' },
