@@ -37,4 +37,7 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
+# Gemini CLI Context
+GEMINI.md
+
 backend/data/*
