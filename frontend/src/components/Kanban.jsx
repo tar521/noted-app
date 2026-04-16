@@ -11,14 +11,14 @@ function KanbanCard({ todo }) {
       className="group bg-surface-2 border border-surface-3 rounded-lg p-3 shadow-sm hover:border-surface-4 transition-all"
       style={{ borderLeft: `4px solid ${PRIORITY_COLORS[todo.priority]}` }}
     >
-      <p className={`text-sm text-ink mb-2 ${todo.completed ? 'line-through text-ink-muted' : ''}`}>
+      <p className={`text-[16px] text-ink mb-2 ${todo.completed ? 'line-through text-ink-muted' : ''}`}>
         {todo.title}
       </p>
       
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-wrap gap-1">
           {todo.tags && todo.tags.map(tag => (
-            <span key={tag} className="text-[10px] bg-surface-3 text-ink-faint px-1.5 py-0.5 rounded">#{tag}</span>
+            <span key={tag} className={`text-[12px] bg-surface-1 ${todo.completed ? 'line-through text-ink-faint px-1.5 py-0.5 rounded' : 'text-ink-muted px-1.5 py-0.5 rounded'}`}>#{tag}</span>
           ))}
         </div>
         {todo.due_date && (
