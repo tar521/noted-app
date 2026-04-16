@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { PRIORITY_COLORS, PRIORITY_BG } from '../constants/priorities';
+import { PRIORITY_LIST, PRIORITY_COLORS, PRIORITY_BG } from '../constants/priorities';
 
 const COLUMNS = ['Not Started', 'In Progress', 'Paused', 'Peer Review', 'Merged/Completed'];
 
@@ -34,6 +34,8 @@ function KanbanCard({ todo }) {
 export default function Kanban() {
   const [todos, setTodos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
 
   useEffect(() => {
     api.getTodos().then(data => {
@@ -90,7 +92,18 @@ export default function Kanban() {
     }
   };
 
-  const getColumnItems = (status) => todos.filter(t => t.status === status);
+  const filtered = todos.filter(t => {
+    
+    // 2. Existing filters
+    if (filter === 'active' && t.completed === 1) return false;
+    if (filter === 'completed' && t.completed === 0) return false;
+    if (priorityFilter !== 'all' && t.priority !== priorityFilter) return false;
+    
+    return true;
+  });
+
+  const getColumnItems = (status) => filtered.filter(t => t.status === status);
+
 
   if (loading) return <div className="p-8 text-ink-faint">Loading board…</div>;
 
@@ -100,6 +113,30 @@ export default function Kanban() {
         <h1 className="font-display text-3xl font-light text-white">Kanban Board</h1>
         <p className="text-ink-muted text-sm mt-1">Drag and drop to manage your workflow</p>
       </div>
+
+      {/* Filters */}
+              <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+                <div className="flex items-center gap-2">
+                {['all', 'active', 'completed'].map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setFilter(f)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize
+                      ${filter === f ? 'bg-accent-glow text-accent' : 'text-ink-muted hover:text-ink hover:bg-surface-2'}`}
+                  >{f}</button>
+                ))}
+                <span className="w-px h-4 bg-surface-3" />
+                {['all', ...PRIORITY_LIST].map(p => (
+                    <button
+                      key={p}
+                      onClick={() => setPriorityFilter(p)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize
+                        ${priorityFilter === p ? 'bg-surface-3 text-ink' : 'text-ink-faint hover:text-ink-muted'}`}
+                      style={priorityFilter === p && p !== 'all' ? { color: PRIORITY_COLORS[p] } : {}}
+                    >{p === 'all' ? 'All priorities' : p}</button>
+                  ))}
+                </div>
+              </div>
 
       <div className="flex-1 overflow-x-auto overflow-y-hidden p-8 pt-0">
         <DragDropContext onDragEnd={onDragEnd}>
