@@ -112,10 +112,9 @@ export default function Kanban() {
       <div className="p-8 pb-4">
         <h1 className="font-display text-3xl font-light text-white">Kanban Board</h1>
         <p className="text-ink-muted text-sm mt-1">Drag and drop to manage your workflow</p>
-      </div>
-
+      
       {/* Filters */}
-              <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+              <div className="flex items-center justify-between mt-8 mb-6 flex-wrap gap-4">
                 <div className="flex items-center gap-2">
                 {['all', 'active', 'completed'].map(f => (
                   <button
@@ -137,6 +136,8 @@ export default function Kanban() {
                   ))}
                 </div>
               </div>
+      
+      </div>
 
       <div className="flex-1 overflow-x-auto overflow-y-hidden p-8 pt-0">
         <DragDropContext onDragEnd={onDragEnd}>
