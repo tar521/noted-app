@@ -5,7 +5,22 @@ import { PRIORITY_LIST, PRIORITY_COLORS, PRIORITY_BG } from '../constants/priori
 
 const COLUMNS = ['Not Started', 'In Progress', 'Paused', 'Peer Review', 'Merged/Completed'];
 
-function KanbanCard({ todo }) {
+function KanbanCard({ todo, onUpdate }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [desc, setDesc] = useState(todo.description || '');
+
+  // Keep local state in sync if todo changes from outside
+  useEffect(() => {
+    setDesc(todo.description || '');
+  }, [todo.description]);
+
+  const saveDescription = () => {
+    if (desc !== (todo.description || '')) {
+      onUpdate(todo.id, { description: desc.trim() || null });
+    }
+    setIsEditing(false);
+  };
+
   return (
     <div
       className="group bg-surface-2 border border-surface-3 rounded-lg p-3 shadow-sm hover:border-surface-4 transition-all"
@@ -14,6 +29,33 @@ function KanbanCard({ todo }) {
       <p className={`text-[16px] text-ink mb-2 ${todo.completed ? 'line-through text-ink-muted' : ''}`}>
         {todo.title}
       </p>
+
+      {/* Description Section */}
+      <div className="mb-3">
+        {isEditing ? (
+          <textarea
+            autoFocus
+            className="w-full bg-surface-3 border border-accent/30 rounded p-1.5 text-xs text-ink outline-none resize-none"
+            rows="2"
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+            onBlur={saveDescription}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                saveDescription();
+              }
+            }}
+          />
+        ) : (
+          <p
+            onClick={() => setIsEditing(true)}
+            className="text-[12px] text-ink-faint hover:text-ink-muted cursor-text italic line-clamp-2 min-h-[1.5em]"
+          >
+            {todo.description || "+ Add details"}
+          </p>
+        )}
+      </div>
       
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-wrap gap-1">
@@ -36,6 +78,15 @@ export default function Kanban() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+
+  const handleUpdate = async (id, updates) => {
+    try {
+      const updatedTodo = await api.updateTodo(id, updates);
+      setTodos(prev => prev.map(t => t.id === id ? { ...t, ...updatedTodo } : t));
+    } catch (err) {
+      console.error("Failed to update todo:", err);
+    }
+  };
 
   useEffect(() => {
     api.getTodos().then(data => {
@@ -169,7 +220,7 @@ export default function Kanban() {
                               {...provided.dragHandleProps}
                               className={snapshot.isDragging ? 'z-50 shadow-xl' : ''}
                             >
-                              <KanbanCard todo={todo} />
+                              <KanbanCard todo={todo} onUpdate={handleUpdate} />
                             </div>
                           )}
                         </Draggable>
