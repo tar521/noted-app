@@ -42,6 +42,7 @@ export const api = {
    * @param {Array<number|string>} ids - An array of todo IDs in the desired order
    */
   reorderTodos: (ids) => req('PUT', '/todos/reorder', { ids }),
+  kanbanReorderTodos: (columns) => req('PUT', '/todos/kanban-reorder', { columns }),
   // Activity
   getActivity: (params = {}) => {
     const qs = new URLSearchParams(params).toString();

@@ -3,7 +3,9 @@ export const PRIORITIES = {
   HIGH: 'high',
   MEDIUM: 'medium',
   LOW: 'low',
-  BACKLOG: 'backlog'
+  BACKLOG: 'backlog',
+  WORK: 'work',
+  PERSONAL: 'personal'
 };
 
 export const PRIORITY_LIST = [
@@ -11,7 +13,9 @@ export const PRIORITY_LIST = [
   PRIORITIES.HIGH,
   PRIORITIES.MEDIUM,
   PRIORITIES.LOW,
-  PRIORITIES.BACKLOG
+  PRIORITIES.BACKLOG,
+  PRIORITIES.WORK,
+  PRIORITIES.PERSONAL
 ];
 
 export const PRIORITY_COLORS = {
@@ -19,7 +23,9 @@ export const PRIORITY_COLORS = {
   [PRIORITIES.HIGH]: '#f87171',
   [PRIORITIES.MEDIUM]: '#fb923c',
   [PRIORITIES.LOW]: '#4ade80',
-  [PRIORITIES.BACKLOG]: '#94a3b8'
+  [PRIORITIES.BACKLOG]: '#94a3b8',
+  [PRIORITIES.WORK]: '#c047c2',
+  [PRIORITIES.PERSONAL]: '#28d0d6'
 };
 
 export const PRIORITY_BG = {
@@ -27,5 +33,7 @@ export const PRIORITY_BG = {
   [PRIORITIES.HIGH]: 'rgba(248, 113, 113, 0.1)',
   [PRIORITIES.MEDIUM]: 'rgba(251, 146, 60, 0.1)',
   [PRIORITIES.LOW]: 'rgba(74, 222, 128, 0.1)',
-  [PRIORITIES.BACKLOG]: 'rgba(148, 163, 184, 0.1)'
+  [PRIORITIES.BACKLOG]: 'rgba(148, 163, 184, 0.1)',
+  [PRIORITIES.WORK]: 'rgba(192, 71, 194, 0.1)',
+  [PRIORITIES.PERSONAL]: 'rgba(40, 208, 214, 0.1)'
 };
