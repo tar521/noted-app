@@ -5,7 +5,7 @@ import { PRIORITY_LIST, PRIORITY_COLORS, PRIORITY_BG } from '../constants/priori
 
 const COLUMNS = ['Not Started', 'In Progress', 'Paused', 'Peer Review', 'Merged/Completed'];
 
-function KanbanCard({ todo, onUpdate, onOpen }) {
+function KanbanCard({ todo, onUpdate, onOpen, config }) {
   const [isEditing, setIsEditing] = useState(false);
   const [desc, setDesc] = useState(todo.description || '');
 
@@ -25,7 +25,7 @@ function KanbanCard({ todo, onUpdate, onOpen }) {
     <div
       onDoubleClick={onOpen}
       className="group bg-surface-2 border border-surface-3 rounded-lg p-3 shadow-sm hover:border-surface-4 transition-all"
-      style={{ borderLeft: `4px solid ${PRIORITY_COLORS[todo.priority]}` }}
+      style={{ borderLeft: `4px solid ${config.PRIORITY_COLORS[todo.priority]}` }}
     >
       <p className={`text-[16px] text-ink mb-2 ${todo.completed ? 'line-through text-ink-muted' : ''}`}>
         {todo.title}
@@ -78,12 +78,12 @@ function KanbanCard({ todo, onUpdate, onOpen }) {
   );
 }
 
-export default function Kanban() {
+export default function Kanban({ config }) {
   const [todos, setTodos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
-  const [selectedTodo, setSelectedTodo] = useState(null); // Track the open modal
+  const [selectedTodo, setSelectedTodo] = useState(null); // Track the open modal  
 
   const handleUpdate = async (id, updates) => {
     try {
@@ -182,13 +182,13 @@ export default function Kanban() {
             >{f}</button>
           ))}
           <span className="w-px h-4 bg-surface-3" />
-          {['all', ...PRIORITY_LIST].map(p => (
+          {config.PRIORITY_LIST.map(p => (
               <button
                 key={p}
                 onClick={() => setPriorityFilter(p)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize
                   ${priorityFilter === p ? 'bg-surface-3 text-ink' : 'text-ink-faint hover:text-ink-muted'}`}
-                style={priorityFilter === p && p !== 'all' ? { color: PRIORITY_COLORS[p] } : {}}
+                style={priorityFilter === p && p !== 'all' ? { color: config.PRIORITY_COLORS[p] } : {}}
               >{p === 'all' ? 'All priorities' : p}</button>
             ))}
           </div>
@@ -226,7 +226,10 @@ export default function Kanban() {
                               {...provided.dragHandleProps}
                               className={snapshot.isDragging ? 'z-50 shadow-xl' : ''}
                             >
-                              <KanbanCard todo={todo} onUpdate={handleUpdate} onOpen={() => setSelectedTodo(todo)} />
+                              <KanbanCard todo={todo} 
+                              onUpdate={handleUpdate} 
+                              onOpen={() => setSelectedTodo(todo)}
+                              config={config} />
                             </div>
                           )}
                         </Draggable>
@@ -251,13 +254,14 @@ export default function Kanban() {
             // Keep the modal in sync with the update
             setSelectedTodo(prev => ({ ...prev, ...updates }));
           }}
+          config={config}
         />
       )}
     </div>
   );
 }
 
-function TodoModal({ todo, onClose, onUpdate }) {
+function TodoModal({ todo, onClose, onUpdate, config }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div 
@@ -306,7 +310,7 @@ function TodoModal({ todo, onClose, onUpdate }) {
                 value={todo.priority}
                 onChange={(e) => onUpdate(todo.id, { priority: e.target.value })}
               >
-                {PRIORITY_LIST.map(p => <option key={p} value={p}>{p}</option>)}
+                {config.PRIORITY_LIST.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
             <div>
