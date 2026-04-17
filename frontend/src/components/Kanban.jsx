@@ -5,7 +5,7 @@ import { PRIORITY_LIST, PRIORITY_COLORS, PRIORITY_BG } from '../constants/priori
 
 const COLUMNS = ['Not Started', 'In Progress', 'Paused', 'Peer Review', 'Merged/Completed'];
 
-function KanbanCard({ todo, onUpdate }) {
+function KanbanCard({ todo, onUpdate, onOpen }) {
   const [isEditing, setIsEditing] = useState(false);
   const [desc, setDesc] = useState(todo.description || '');
 
@@ -23,6 +23,7 @@ function KanbanCard({ todo, onUpdate }) {
 
   return (
     <div
+      onDoubleClick={onOpen}
       className="group bg-surface-2 border border-surface-3 rounded-lg p-3 shadow-sm hover:border-surface-4 transition-all"
       style={{ borderLeft: `4px solid ${PRIORITY_COLORS[todo.priority]}` }}
     >
@@ -49,7 +50,11 @@ function KanbanCard({ todo, onUpdate }) {
           />
         ) : (
           <p
-            onClick={() => setIsEditing(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsEditing(true);
+            }}
+            onDoubleClick={(e) => e.stopPropagation()}
             className="text-[12px] text-ink-faint hover:text-ink-muted cursor-text italic line-clamp-2 min-h-[1.5em]"
           >
             {todo.description || "+ Add details"}
@@ -78,6 +83,7 @@ export default function Kanban() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [selectedTodo, setSelectedTodo] = useState(null); // Track the open modal
 
   const handleUpdate = async (id, updates) => {
     try {
@@ -165,28 +171,28 @@ export default function Kanban() {
         <p className="text-ink-muted text-sm mt-1">Drag and drop to manage your workflow</p>
       
       {/* Filters */}
-              <div className="flex items-center justify-between mt-8 mb-6 flex-wrap gap-4">
-                <div className="flex items-center gap-2">
-                {['all', 'active', 'completed'].map(f => (
-                  <button
-                    key={f}
-                    onClick={() => setFilter(f)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize
-                      ${filter === f ? 'bg-accent-glow text-accent' : 'text-ink-muted hover:text-ink hover:bg-surface-2'}`}
-                  >{f}</button>
-                ))}
-                <span className="w-px h-4 bg-surface-3" />
-                {['all', ...PRIORITY_LIST].map(p => (
-                    <button
-                      key={p}
-                      onClick={() => setPriorityFilter(p)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize
-                        ${priorityFilter === p ? 'bg-surface-3 text-ink' : 'text-ink-faint hover:text-ink-muted'}`}
-                      style={priorityFilter === p && p !== 'all' ? { color: PRIORITY_COLORS[p] } : {}}
-                    >{p === 'all' ? 'All priorities' : p}</button>
-                  ))}
-                </div>
-              </div>
+        <div className="flex items-center justify-between mt-8 mb-6 flex-wrap gap-4">
+          <div className="flex items-center gap-2">
+          {['all', 'active', 'completed'].map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize
+                ${filter === f ? 'bg-accent-glow text-accent' : 'text-ink-muted hover:text-ink hover:bg-surface-2'}`}
+            >{f}</button>
+          ))}
+          <span className="w-px h-4 bg-surface-3" />
+          {['all', ...PRIORITY_LIST].map(p => (
+              <button
+                key={p}
+                onClick={() => setPriorityFilter(p)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize
+                  ${priorityFilter === p ? 'bg-surface-3 text-ink' : 'text-ink-faint hover:text-ink-muted'}`}
+                style={priorityFilter === p && p !== 'all' ? { color: PRIORITY_COLORS[p] } : {}}
+              >{p === 'all' ? 'All priorities' : p}</button>
+            ))}
+          </div>
+        </div>
       
       </div>
 
@@ -220,7 +226,7 @@ export default function Kanban() {
                               {...provided.dragHandleProps}
                               className={snapshot.isDragging ? 'z-50 shadow-xl' : ''}
                             >
-                              <KanbanCard todo={todo} onUpdate={handleUpdate} />
+                              <KanbanCard todo={todo} onUpdate={handleUpdate} onOpen={() => setSelectedTodo(todo)} />
                             </div>
                           )}
                         </Draggable>
@@ -233,6 +239,97 @@ export default function Kanban() {
             ))}
           </div>
         </DragDropContext>
+      </div>
+
+      {/* Render the Modal if a todo is selected */}
+      {selectedTodo && (
+        <TodoModal 
+          todo={selectedTodo} 
+          onClose={() => setSelectedTodo(null)} 
+          onUpdate={(id, updates) => {
+            handleUpdate(id, updates);
+            // Keep the modal in sync with the update
+            setSelectedTodo(prev => ({ ...prev, ...updates }));
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function TodoModal({ todo, onClose, onUpdate }) {
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div 
+        className="bg-surface-1 border border-surface-3 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200"
+      >
+        {/* Modal Header */}
+        <div className="p-6 border-b border-surface-3 flex justify-between items-start">
+          <div className="flex-1">
+             <input 
+               className="bg-transparent text-2xl font-display text-white outline-none w-full"
+               value={todo.title}
+               onChange={(e) => onUpdate(todo.id, { title: e.target.value })}
+             />
+             <div className="flex gap-2 mt-2">
+               <span className="text-xs text-ink-faint uppercase tracking-widest">Status:</span>
+               <span className="text-xs text-accent font-bold">{todo.status}</span>
+             </div>
+          </div>
+          <button onClick={onClose} className="text-ink-faint hover:text-white transition-colors">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div className="p-6 space-y-6">
+          {/* Detailed Description */}
+          <div>
+            <label className="text-xs font-semibold text-ink-muted uppercase block mb-2">Description</label>
+            <textarea 
+              className="w-full bg-surface-2 border border-surface-3 rounded-xl p-4 text-ink outline-none focus:border-accent/50 transition-all resize-none"
+              rows="6"
+              placeholder="Add more details about this task..."
+              value={todo.description || ''}
+              onChange={(e) => onUpdate(todo.id, { description: e.target.value })}
+            />
+          </div>
+
+          {/* Metadata Row */}
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="text-xs font-semibold text-ink-muted uppercase block mb-2">Priority</label>
+              <select 
+                className="w-full bg-surface-2 border border-surface-3 rounded-lg p-2 text-sm text-ink outline-none"
+                value={todo.priority}
+                onChange={(e) => onUpdate(todo.id, { priority: e.target.value })}
+              >
+                {PRIORITY_LIST.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-ink-muted uppercase block mb-2">Due Date</label>
+              <input 
+                type="date"
+                className="w-full bg-surface-2 border border-surface-3 rounded-lg p-2 text-sm text-ink outline-none"
+                value={todo.due_date ? todo.due_date.split('T')[0] : ''}
+                onChange={(e) => onUpdate(todo.id, { due_date: e.target.value })}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Modal Footer */}
+        <div className="p-4 bg-surface-2/50 border-t border-surface-3 flex justify-end">
+          <button 
+            onClick={onClose}
+            className="px-6 py-2 bg-accent-glow text-accent rounded-xl font-medium hover:brightness-110 transition-all"
+          >
+            Done
+          </button>
+        </div>
       </div>
     </div>
   );
