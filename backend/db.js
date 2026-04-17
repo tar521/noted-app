@@ -71,13 +71,19 @@ async function init() {
       title TEXT NOT NULL,
       completed INTEGER DEFAULT 0,
       priority TEXT DEFAULT 'medium',
+      status TEXT DEFAULT 'Not Started',
       due_date TEXT DEFAULT NULL,
       tags TEXT DEFAULT '[]',
-      order_index INTEGER DEFAULT 0, -- Add this line
+      order_index INTEGER DEFAULT 0,
+      kanban_order_index INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT (datetime('now')),
       updated_at DATETIME DEFAULT (datetime('now'))
     )
   `);
+
+  // Ensure new columns exist for older databases
+  try { db.run("ALTER TABLE todos ADD COLUMN status TEXT DEFAULT 'Not Started'"); } catch(e) {}
+  try { db.run("ALTER TABLE todos ADD COLUMN kanban_order_index INTEGER DEFAULT 0"); } catch(e) {}
   db.run(`
     CREATE TABLE IF NOT EXISTS activity_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,6 +95,9 @@ async function init() {
       created_at DATETIME DEFAULT (datetime('now'))
     )
   `);
+
+  // Inside your init() function in db.js
+try { db.run("ALTER TABLE todos ADD COLUMN description TEXT DEFAULT NULL"); } catch(e) {}
 
   const folderCount = get('SELECT COUNT(*) as count FROM folders');
   if (!folderCount || folderCount.count === 0) {

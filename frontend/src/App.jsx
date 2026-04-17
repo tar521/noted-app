@@ -5,9 +5,11 @@ import Dashboard from './components/Dashboard';
 import Notes from './components/Notes';
 import Todos from './components/Todos';
 import History from './components/History';
+import Kanban from './components/Kanban';
 
 export default function App() {
   const [tab, setTab] = useState('dashboard');
+
   const [folders, setFolders] = useState([]);
   const [activeFolder, setActiveFolder] = useState(null);
   const [activeNote, setActiveNote] = useState(null);
@@ -48,6 +50,7 @@ export default function App() {
           />
         )}
         {tab === 'todos' && <Todos />}
+        {tab === 'kanban' && <Kanban />}
         {tab === 'history' && <History />}
       </main>
     </div>
