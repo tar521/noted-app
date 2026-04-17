@@ -96,6 +96,9 @@ async function init() {
     )
   `);
 
+  // Inside your init() function in db.js
+try { db.run("ALTER TABLE todos ADD COLUMN description TEXT DEFAULT NULL"); } catch(e) {}
+
   const folderCount = get('SELECT COUNT(*) as count FROM folders');
   if (!folderCount || folderCount.count === 0) {
     const { lastInsertRowid: folderId } = run(

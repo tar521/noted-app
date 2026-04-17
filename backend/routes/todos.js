@@ -29,7 +29,7 @@ router.get('/', (req, res) => {
 // POST /api/todos
 router.post('/', (req, res) => {
   const db = req.app.locals.db;
-  const { title, priority, due_date, tags, status } = req.body;
+  const { title, priority, due_date, tags, status, description } = req.body;
   
   // 1. Get the current minimum order_index to place the new todo at the top
   const minOrder = db.get('SELECT MIN(order_index) as min_idx FROM todos');
@@ -39,14 +39,15 @@ router.post('/', (req, res) => {
 
   // 2. Insert with the new order_index
   const { lastInsertRowid } = db.run(
-    "INSERT INTO todos (title, priority, due_date, tags, order_index, status) VALUES (?, ?, ?, ?, ?, ?)",
+    "INSERT INTO todos (title, priority, due_date, tags, order_index, status, description) VALUES (?, ?, ?, ?, ?, ?, ?)",
     [
       title, 
       priority || 'medium', 
       due_date || null, 
       JSON.stringify(tags || []), 
       newOrderIndex,
-      defaultStatus
+      defaultStatus,
+      description || null
     ]
   );
 
@@ -97,7 +98,7 @@ router.patch('/:id', (req, res) => {
   const todo = db.get('SELECT * FROM todos WHERE id = ?', [req.params.id]);
   if (!todo) return res.status(404).json({ error: 'Todo not found' });
 
-  let { title, completed, priority, due_date, tags, status } = req.body;
+  let { title, completed, priority, due_date, tags, status, description } = req.body;
 
   // Sync logic: If completed is updated, update status
   if (completed !== undefined && status === undefined) {
@@ -152,6 +153,7 @@ router.patch('/:id', (req, res) => {
     priority = ?, 
     due_date = ?, 
     tags = ?, 
+    description = ?,
     updated_at = datetime('now') 
     WHERE id = ?`,
     [
@@ -161,6 +163,7 @@ router.patch('/:id', (req, res) => {
       priority ?? todo.priority,
       due_date ?? todo.due_date,
       tags ? JSON.stringify(tags) : todo.tags,
+      description ?? todo.description,
       req.params.id
     ]
   );

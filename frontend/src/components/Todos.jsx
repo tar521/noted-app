@@ -7,6 +7,13 @@ function TodoCard({ todo, onToggle, onDelete, onUpdate }) {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(todo.title);
   const [tagInput, setTagInput] = useState('');
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [editDesc, setEditDesc] = useState(todo.description || '');
+
+  function saveDescription() {
+    onUpdate(todo.id, { description: editDesc.trim() || null });
+    setEditingDesc(false);
+  }
 
   function saveTitle() {
     if (editTitle.trim() && editTitle !== todo.title) onUpdate(todo.id, { title: editTitle.trim() });
@@ -64,6 +71,28 @@ function TodoCard({ todo, onToggle, onDelete, onUpdate }) {
               onDoubleClick={() => setEditing(true)}
             >{todo.title}</p>
           )}
+          
+          {/* Description Section */}
+          <div className="mt-1">
+            {editingDesc ? (
+              <textarea
+                autoFocus
+                value={editDesc}
+                onChange={e => setEditDesc(e.target.value)}
+                onBlur={saveDescription}
+                placeholder="Add a description..."
+                className="w-full bg-surface-2 rounded px-2 py-1 text-xs text-ink outline-none border border-surface-4 resize-none"
+                rows="2"
+              />
+            ) : (
+              <p 
+                className="text-xs text-ink hover:text-ink-muted cursor-pointer italic"
+                onClick={() => setEditingDesc(true)}
+              >
+                {todo.description || "+ Add details"}
+              </p>
+            )}
+          </div>
 
           {/* Meta row */}
           <div className="flex flex-wrap items-center gap-2 mt-2">
@@ -120,6 +149,7 @@ export default function Todos() {
   const [newPriority, setNewPriority] = useState(PRIORITIES.MEDIUM);
   const [newDue, setNewDue] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [newDescription, setNewDescription] = useState('');
 
   // New state that persists to localStorage
   const [hideCompleted, setHideCompleted] = useState(() => {
@@ -136,11 +166,12 @@ export default function Todos() {
   async function createTodo(e) {
     e.preventDefault();
     if (!newTitle.trim()) return;
-    const todo = await api.createTodo({ title: newTitle.trim(), priority: newPriority, due_date: newDue || null });
+    const todo = await api.createTodo({ title: newTitle.trim(), priority: newPriority, due_date: newDue || null, description: newDescription.trim() || null });
     setTodos(prev => [todo, ...prev]);
     setNewTitle(''); 
     setNewDue(''); 
     setNewPriority(PRIORITIES.MEDIUM); 
+    setNewDescription('');
     setShowForm(false);
   }
 
@@ -237,6 +268,13 @@ export default function Todos() {
               onChange={e => setNewTitle(e.target.value)}
               placeholder="What needs to be done?"
               className="w-full bg-surface-3 border border-surface-4 rounded-lg px-3 py-2.5 text-sm text-ink placeholder:text-ink-faint outline-none focus:border-accent"
+            />
+            <textarea
+              value={newDescription}
+              onChange={e => setNewDescription(e.target.value)}
+              placeholder="Details..."
+              className="w-full bg-surface-3 border border-surface-4 rounded-lg px-3 py-2 text-sm text-ink outline-none focus:border-accent"
+              rows="2"
             />
             <div className="flex gap-3 flex-wrap">
               <select
