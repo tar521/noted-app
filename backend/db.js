@@ -96,8 +96,35 @@ async function init() {
     )
   `);
 
+  db.run(`CREATE TABLE IF NOT EXISTS configuration_data (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    key_name TEXT UNIQUE,
+    data TEXT
+  )`);
+
+  // Check if we need to seed the defaults
+  const configCount = get('SELECT COUNT(*) as count FROM configuration_data');
+  if (!configCount || configCount.count === 0) {
+    const defaults = [
+      ['PRIORITY_LIST', ['urgent', 'high', 'medium', 'low', 'backlog', 'work', 'personal']],
+      ['PRIORITY_COLORS', {
+        urgent: '#ef4444',
+        high: '#f87171',
+        medium: '#fb923c',
+        low: '#4ade80',
+        backlog: '#94a3b8',
+        work: '#c047c2',
+        personal: '#28d0d6'
+      }]
+    ];
+
+    defaults.forEach(([key, value]) => {
+      run("INSERT INTO configuration_data (key_name, data) VALUES (?, ?)", [key, JSON.stringify(value)]);
+    });
+  }
+
   // Inside your init() function in db.js
-try { db.run("ALTER TABLE todos ADD COLUMN description TEXT DEFAULT NULL"); } catch(e) {}
+  try { db.run("ALTER TABLE todos ADD COLUMN description TEXT DEFAULT NULL"); } catch(e) {}
 
   const folderCount = get('SELECT COUNT(*) as count FROM folders');
   if (!folderCount || folderCount.count === 0) {

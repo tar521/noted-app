@@ -13,9 +13,13 @@ export default function App() {
   const [folders, setFolders] = useState([]);
   const [activeFolder, setActiveFolder] = useState(null);
   const [activeNote, setActiveNote] = useState(null);
+  const [config, setConfig] = useState(null);
 
   useEffect(() => {
-    api.getFolders().then(setFolders);
+    Promise.all([api.getFolders(), api.getConfig()]).then(([foldersData, configData]) => {
+      setFolders(foldersData);
+      setConfig(configData);
+    });
   }, []);
 
   return (
@@ -38,6 +42,7 @@ export default function App() {
             setTab={setTab}
             setActiveFolder={setActiveFolder}
             setActiveNote={setActiveNote}
+            config={config}
           />
         )}
         {tab === 'notes' && (
@@ -49,8 +54,8 @@ export default function App() {
             setActiveNote={setActiveNote}
           />
         )}
-        {tab === 'todos' && <Todos />}
-        {tab === 'kanban' && <Kanban />}
+        {tab === 'todos' && <Todos config={config} setConfig={setConfig} />}
+        {tab === 'kanban' && <Kanban config={config} />}
         {tab === 'history' && <History />}
       </main>
     </div>

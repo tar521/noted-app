@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
-import { PRIORITY_COLORS, PRIORITY_BG } from '../constants/priorities';
 
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -23,7 +22,9 @@ function formatDate(dateStr) {
   return { label: `Due ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`, color: '#9090a8' };
 }
 
-export default function Dashboard({ folders, setTab, setActiveFolder, setActiveNote }) {
+export default function Dashboard({ folders, setTab, setActiveFolder, setActiveNote, config }) {
+  if (!config) return null;
+  
   const [recentNotes, setRecentNotes] = useState([]);
   const [activeTodos, setActiveTodos] = useState([]);
   const [greeting, setGreeting] = useState('');
@@ -176,13 +177,13 @@ export default function Dashboard({ folders, setTab, setActiveFolder, setActiveN
                   <div
                     key={todo.id}
                     className="flex items-start gap-3 p-3 rounded-xl border transition-all"
-                    style={{ background: PRIORITY_BG[todo.priority], borderColor: PRIORITY_COLORS[todo.priority] + '30' }}
+                    style={{ background: config.PRIORITY_BGS[todo.priority], borderColor: config.PRIORITY_COLORS[todo.priority] + '30' }}
                   >
                     <button
                       onClick={() => toggleTodo(todo.id, todo.completed)}
                       className="mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 hover:scale-110 transition-transform"
-                      style={{ borderColor: PRIORITY_COLORS[todo.priority],
-                        background: todo.completed === 1 ? PRIORITY_COLORS[todo.priority] : 'transparent'
+                      style={{ borderColor: config.PRIORITY_COLORS[todo.priority],
+                        background: todo.completed === 1 ? config.PRIORITY_COLORS[todo.priority] : 'transparent'
                        }}
                     />
                     <div className="flex-1 min-w-0">

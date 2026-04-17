@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { PRIORITIES, PRIORITY_LIST, PRIORITY_COLORS, PRIORITY_BG } from '../constants/priorities';
 
-function TodoCard({ todo, onToggle, onDelete, onUpdate }) {
+function TodoCard({ todo, onToggle, onDelete, onUpdate, config }) {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(todo.title);
   const [tagInput, setTagInput] = useState('');
@@ -39,7 +38,7 @@ function TodoCard({ todo, onToggle, onDelete, onUpdate }) {
   return (
     <div
       className={`group rounded-xl border transition-all duration-200 ${todo.completed ? 'opacity-100' : ''}`}
-      style={{ background: PRIORITY_BG[todo.priority], borderColor: todo.completed ? '#2e2e37' : PRIORITY_COLORS[todo.priority] + '40' }}
+      style={{ background: config.PRIORITY_BGS[todo.priority], borderColor: todo.completed ? '#2e2e37' : config.PRIORITY_COLORS[todo.priority] + '40' }}
     >
       <div className="flex items-start gap-3 p-4">
         {/* Checkbox */}
@@ -49,7 +48,7 @@ function TodoCard({ todo, onToggle, onDelete, onUpdate }) {
             onToggle(todo.id, todo.completed !== 1)
           }}
           className="mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all"
-          style={{ borderColor: PRIORITY_COLORS[todo.priority], background: todo.completed === 1 ? PRIORITY_COLORS[todo.priority] : 'transparent' }}
+          style={{ borderColor: config.PRIORITY_COLORS[todo.priority], background: todo.completed === 1 ? config.PRIORITY_COLORS[todo.priority] : 'transparent' }}
         >
           {todo.completed === 1 && <span className="text-surface-0 text-xs">✓</span>}
         </button>
@@ -101,9 +100,9 @@ function TodoCard({ todo, onToggle, onDelete, onUpdate }) {
               value={todo.priority}
               onChange={e => onUpdate(todo.id, { priority: e.target.value })}
               className="text-xs px-2 py-0.5 rounded-full border outline-none bg-surface-2 cursor-pointer"
-              style={{ color: PRIORITY_COLORS[todo.priority], borderColor: PRIORITY_COLORS[todo.priority] + '60' }}
+              style={{ color: config.PRIORITY_COLORS[todo.priority], borderColor: config.PRIORITY_COLORS[todo.priority] + '60' }}
             >
-              {PRIORITY_LIST.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
+              {config.PRIORITY_LIST.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>)}
             </select>
 
             {/* Due date */}
@@ -141,20 +140,45 @@ function TodoCard({ todo, onToggle, onDelete, onUpdate }) {
   );
 }
 
-export default function Todos() {
+export default function Todos({ config, setConfig }) {
   const [todos, setTodos] = useState([]);
   const [filter, setFilter] = useState('all'); // all | active | completed
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [newTitle, setNewTitle] = useState('');
-  const [newPriority, setNewPriority] = useState(PRIORITIES.MEDIUM);
+  const [newPriority, setNewPriority] = useState(config.PRIORITY_LIST["medium"]);
   const [newDue, setNewDue] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [newDescription, setNewDescription] = useState('');
+  const [showPriorityManager, setShowPriorityManager] = useState(false);
+  const [newPName, setNewPName] = useState('');
+  const [newPColor, setNewPColor] = useState('#6366f1');
 
   // New state that persists to localStorage
   const [hideCompleted, setHideCompleted] = useState(() => {
     return localStorage.getItem('hideCompletedTodos') === 'true';
   });
+
+  // Function to add a new priority
+  const addCustomPriority = async () => {
+    if (!newPName.trim()) return;
+    const key = newPName.trim().toLowerCase();
+    
+    // 1. Update List
+    const newList = [...config.PRIORITY_LIST, key];
+    await api.updateConfig('PRIORITY_LIST', newList);
+
+    // 2. Update Colors
+    const newColors = { ...config.PRIORITY_COLORS, [key]: newPColor };
+    await api.updateConfig('PRIORITY_COLORS', newColors);
+
+    // 3. Update Backgrounds
+    const newBackgrounds = { ...config.PRIORITY_BGS, [key]: `${newPColor}1a` };
+    await api.updateConfig('PRIORITY_BGS', newBackgrounds);
+
+    // 4. Refresh local state
+    setConfig({ PRIORITY_LIST: newList, PRIORITY_COLORS: newColors, PRIORITY_BGS: newBackgrounds });
+    setNewPName('');
+  };
 
   useEffect(() => { api.getTodos().then(setTodos); }, []);
 
@@ -170,7 +194,7 @@ export default function Todos() {
     setTodos(prev => [todo, ...prev]);
     setNewTitle(''); 
     setNewDue(''); 
-    setNewPriority(PRIORITIES.MEDIUM); 
+    setNewPriority(config.PRIORITY_LIST["medium"]); 
     setNewDescription('');
     setShowForm(false);
   }
@@ -257,6 +281,42 @@ export default function Todos() {
           >
             <span>+</span> New Todo
           </button>
+          {/* Priority Manager Toggle */}
+          <button 
+            onClick={() => setShowPriorityManager(!showPriorityManager)}
+            className="text-xs text-ink-faint hover:text-ink transition-colors"
+          >
+            ⚙ Manage Priorities
+          </button>
+
+          {showPriorityManager && (
+            <div className="mb-6 p-4 bg-surface-2 border border-dashed border-surface-4 rounded-xl flex gap-3 items-end">
+              <div className="flex-1">
+                <label className="text-[10px] uppercase font-bold text-ink-faint block mb-1">Priority Name</label>
+                <input 
+                  value={newPName}
+                  onChange={e => setNewPName(e.target.value)}
+                  className="w-full bg-surface-3 rounded px-2 py-1 text-sm text-ink outline-none"
+                  placeholder="e.g. Side Project"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase font-bold text-ink-faint block mb-1">Color</label>
+                <input 
+                  type="color" 
+                  value={newPColor}
+                  onChange={e => setNewPColor(e.target.value)}
+                  className="h-8 w-12 bg-transparent cursor-pointer"
+                />
+              </div>
+              <button 
+                onClick={addCustomPriority}
+                className="bg-accent text-surface-0 px-4 py-1.5 rounded-lg text-xs font-bold"
+              >
+                Add
+              </button>
+            </div>
+          )}
         </div>
 
         {/* New todo form */}
@@ -282,7 +342,7 @@ export default function Todos() {
                 onChange={e => setNewPriority(e.target.value)}
                 className="bg-surface-3 border border-surface-4 rounded-lg px-3 py-2 text-sm text-ink outline-none cursor-pointer"
               >
-                {PRIORITY_LIST.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)} priority</option>)}
+                {config.PRIORITY_LIST.map(p => <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)} priority</option>)}
               </select>
               <input
                 type="date"
@@ -310,13 +370,13 @@ export default function Todos() {
             >{f}</button>
           ))}
           <span className="w-px h-4 bg-surface-3" />
-          {['all', ...PRIORITY_LIST].map(p => (
+          {config.PRIORITY_LIST.map(p => (
               <button
                 key={p}
                 onClick={() => setPriorityFilter(p)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize
                   ${priorityFilter === p ? 'bg-surface-3 text-ink' : 'text-ink-faint hover:text-ink-muted'}`}
-                style={priorityFilter === p && p !== 'all' ? { color: PRIORITY_COLORS[p] } : {}}
+                style={priorityFilter === p && p !== 'all' ? { color: config.PRIORITY_COLORS[p] } : {}}
               >{p === 'all' ? 'All priorities' : p}</button>
             ))}
             {/* New Hide Toggle */}
@@ -355,6 +415,7 @@ export default function Todos() {
                           onToggle={toggleTodo} 
                           onDelete={deleteTodo} 
                           onUpdate={updateTodo} 
+                          config={config}
                         />
                       </div>
                     )}

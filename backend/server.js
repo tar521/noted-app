@@ -17,6 +17,7 @@ init().then(dbClient => {
   app.use('/api/notes', require('./routes/notes'));
   app.use('/api/todos', require('./routes/todos'));
   app.use('/api/activity', require('./routes/activity'));
+  app.use('/api/config', require('./routes/config'))
 
   app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 

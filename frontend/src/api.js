@@ -13,6 +13,9 @@ async function req(method, path, body) {
 }
 
 export const api = {
+  getConfig: () => req('GET', '/config'),
+  updateConfig: (key, data) => req('PUT', `/config/${key}`, { data }),
+
   // Folders
   getFolders: () => req('GET', '/folders'),
   createFolder: (data) => req('POST', '/folders', data),
