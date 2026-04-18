@@ -1,18 +1,38 @@
 const BASE = '/api';
 
 async function req(method, path, body) {
-  const res = await fetch(`${BASE}${path}`, {
+  const options = {
     method,
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', // Ensure cookies are sent and received
     body: body ? JSON.stringify(body) : undefined,
-  });
+  };
+
+  const res = await fetch(`${BASE}${path}`, options);
   
-  // FIX: If the response is empty (like a Delete 204), don't try to parse JSON
+  if (res.status === 401 && !path.includes('/auth/me')) {
+    // Redirect to login if unauthorized, except when checking initial session
+    // window.location.href = '/login'; 
+  }
+
   const text = await res.text();
-  return text ? JSON.parse(text) : {};
+  const data = text ? JSON.parse(text) : {};
+  
+  if (!res.ok) {
+    throw data;
+  }
+  
+  return data;
 }
 
 export const api = {
+  // Auth
+  login: (email, password) => req('POST', '/auth/login', { email, password }),
+  register: (email, password, name) => req('POST', '/auth/register', { email, password, name }),
+  resetPassword: (email, newPassword) => req('POST', '/auth/reset', { email, newPassword }),
+  logout: () => req('POST', '/auth/logout'),
+  getMe: () => req('GET', '/auth/me'),
+
   getConfig: () => req('GET', '/config'),
   updateConfig: (key, data) => req('PUT', `/config/${key}`, { data }),
 

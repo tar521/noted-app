@@ -1,18 +1,25 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const { init } = require('./db');
 
 const app = express();
 const PORT = 3001;
 
-app.use(cors({ origin: ['http://localhost:5173', 'http://notes-app'] }));
+app.use(cors({ 
+  origin: ['http://localhost:5173', 'http://notes-app'],
+  credentials: true 
+}));
 app.use(express.json());
+app.use(cookieParser());
 
 // DB must be ready before routes are used
 init().then(dbClient => {
   // Pass dbClient to routes via app.locals
   app.locals.db = dbClient;
 
+  app.use('/api/auth', require('./routes/auth'));
   app.use('/api/folders', require('./routes/folders'));
   app.use('/api/notes', require('./routes/notes'));
   app.use('/api/todos', require('./routes/todos'));

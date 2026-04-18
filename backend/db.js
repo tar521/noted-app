@@ -47,8 +47,21 @@ async function init() {
   }
 
   db.run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT UNIQUE,
+      password_hash TEXT,
+      google_id TEXT,
+      name TEXT,
+      avatar_url TEXT,
+      created_at DATETIME DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.run(`
     CREATE TABLE IF NOT EXISTS folders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
       name TEXT NOT NULL,
       color TEXT DEFAULT '#6366f1',
       created_at DATETIME DEFAULT (datetime('now')),
@@ -58,6 +71,7 @@ async function init() {
   db.run(`
     CREATE TABLE IF NOT EXISTS notes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
       folder_id INTEGER,
       title TEXT NOT NULL DEFAULT 'Untitled',
       content TEXT DEFAULT '{}',
@@ -68,6 +82,7 @@ async function init() {
   db.run(`
     CREATE TABLE IF NOT EXISTS todos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
       title TEXT NOT NULL,
       completed INTEGER DEFAULT 0,
       priority TEXT DEFAULT 'medium',
@@ -76,17 +91,26 @@ async function init() {
       tags TEXT DEFAULT '[]',
       order_index INTEGER DEFAULT 0,
       kanban_order_index INTEGER DEFAULT 0,
+      description TEXT DEFAULT NULL,
       created_at DATETIME DEFAULT (datetime('now')),
       updated_at DATETIME DEFAULT (datetime('now'))
     )
   `);
 
-  // Ensure new columns exist for older databases
+  // Ensure user_id column exists for older databases
+  const tablesToUpdate = ['folders', 'notes', 'todos', 'activity_log', 'configuration_data'];
+  tablesToUpdate.forEach(table => {
+    try { db.run(`ALTER TABLE ${table} ADD COLUMN user_id INTEGER`); } catch(e) {}
+  });
+
   try { db.run("ALTER TABLE todos ADD COLUMN status TEXT DEFAULT 'Not Started'"); } catch(e) {}
   try { db.run("ALTER TABLE todos ADD COLUMN kanban_order_index INTEGER DEFAULT 0"); } catch(e) {}
+  try { db.run("ALTER TABLE todos ADD COLUMN description TEXT DEFAULT NULL"); } catch(e) {}
+
   db.run(`
     CREATE TABLE IF NOT EXISTS activity_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
       type TEXT NOT NULL,
       entity TEXT NOT NULL,
       entity_id INTEGER NOT NULL,
@@ -96,43 +120,85 @@ async function init() {
     )
   `);
 
-  db.run(`CREATE TABLE IF NOT EXISTS configuration_data (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    key_name TEXT UNIQUE,
-    data TEXT
-  )`);
+  // 0. Fix the configuration_data table to support per-user UNIQUE keys
+  try {
+    // Check if the current table has user_id in its unique constraint
+    const tableInfo = db.exec("PRAGMA index_list('configuration_data')");
+    // If table exists, we'll recreate it to be safe and ensure the new schema
+    db.run(`
+      CREATE TABLE IF NOT EXISTS configuration_data_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        key_name TEXT,
+        data TEXT,
+        UNIQUE(user_id, key_name)
+      )
+    `);
+    
+    // Copy data over if the old table has user_id column
+    try {
+        db.run("INSERT INTO configuration_data_new (user_id, key_name, data) SELECT user_id, key_name, data FROM configuration_data");
+    } catch (e) {
+        // If user_id didn't exist, we'll handle it during the default user migration below
+        db.run("INSERT INTO configuration_data_new (key_name, data) SELECT key_name, data FROM configuration_data");
+    }
+    
+    db.run("DROP TABLE configuration_data");
+    db.run("ALTER TABLE configuration_data_new RENAME TO configuration_data");
+  } catch (e) {
+    // If it fails because the table doesn't exist, just create it
+    db.run(`CREATE TABLE IF NOT EXISTS configuration_data (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      key_name TEXT,
+      data TEXT,
+      UNIQUE(user_id, key_name)
+    )`);
+  }
 
-  // Check if we need to seed the defaults
-  const configCount = get('SELECT COUNT(*) as count FROM configuration_data');
+  // 1. Ensure a Default User exists
+  let defaultUser = get("SELECT id FROM users WHERE email = ?", ['default@noted.app']);
+  if (!defaultUser) {
+    const { lastInsertRowid } = run(
+      "INSERT INTO users (email, name) VALUES (?, ?)",
+      ['default@noted.app', 'Default User']
+    );
+    defaultUser = { id: lastInsertRowid };
+  }
+
+  // 2. Migrate any orphaned data to the Default User
+  tablesToUpdate.forEach(table => {
+    db.run(`UPDATE ${table} SET user_id = ? WHERE user_id IS NULL`, [defaultUser.id]);
+  });
+
+  // Check if we need to seed the defaults for the default user
+  const configCount = get('SELECT COUNT(*) as count FROM configuration_data WHERE user_id = ?', [defaultUser.id]);
   if (!configCount || configCount.count === 0) {
     const defaults = [
-      ['PRIORITY_LIST', ['urgent', 'high', 'medium', 'low', 'backlog', 'work', 'personal']],
+      ['PRIORITY_LIST', ['work', 'personal']],
       ['PRIORITY_COLORS', {
-        urgent: '#ef4444',
-        high: '#f87171',
-        medium: '#fb923c',
-        low: '#4ade80',
-        backlog: '#94a3b8',
         work: '#c047c2',
         personal: '#28d0d6'
+      }],
+      ['PRIORITY_BGS', {
+        work: 'rgba(192, 71, 194, 0.1)',
+        personal: 'rgba(40, 208, 214, 0.1)'
       }]
     ];
 
     defaults.forEach(([key, value]) => {
-      run("INSERT INTO configuration_data (key_name, data) VALUES (?, ?)", [key, JSON.stringify(value)]);
+      run("INSERT INTO configuration_data (user_id, key_name, data) VALUES (?, ?, ?)", [defaultUser.id, key, JSON.stringify(value)]);
     });
   }
 
-  // Inside your init() function in db.js
-  try { db.run("ALTER TABLE todos ADD COLUMN description TEXT DEFAULT NULL"); } catch(e) {}
-
-  const folderCount = get('SELECT COUNT(*) as count FROM folders');
+  const folderCount = get('SELECT COUNT(*) as count FROM folders WHERE user_id = ?', [defaultUser.id]);
   if (!folderCount || folderCount.count === 0) {
     const { lastInsertRowid: folderId } = run(
-      "INSERT INTO folders (name, color) VALUES (?, ?)",
-      ['Getting Started', '#6366f1']
+      "INSERT INTO folders (user_id, name, color) VALUES (?, ?, ?)",
+      [defaultUser.id, 'Getting Started', '#6366f1']
     );
-    run("INSERT INTO notes (folder_id, title, content) VALUES (?, ?, ?)", [
+    run("INSERT INTO notes (user_id, folder_id, title, content) VALUES (?, ?, ?, ?)", [
+      defaultUser.id,
       folderId,
       'Welcome to Noted',
       JSON.stringify({
@@ -148,8 +214,8 @@ async function init() {
         ]
       })
     ]);
-    run("INSERT INTO todos (title, priority, tags) VALUES (?, ?, ?)", ['Set up your first folder', 'high', JSON.stringify(['setup'])]);
-    run("INSERT INTO todos (title, priority, tags) VALUES (?, ?, ?)", ['Try writing your first note', 'medium', JSON.stringify(['notes'])]);
+    run("INSERT INTO todos (user_id, title, priority, tags) VALUES (?, ?, ?, ?)", [defaultUser.id, 'Set up your first folder', 'high', JSON.stringify(['setup'])]);
+    run("INSERT INTO todos (user_id, title, priority, tags) VALUES (?, ?, ?, ?)", [defaultUser.id, 'Try writing your first note', 'medium', JSON.stringify(['notes'])]);
     persist();
   }
 
