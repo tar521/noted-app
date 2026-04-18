@@ -1,24 +1,26 @@
 const express = require('express');
 const router = express.Router();
+const { authenticateToken } = require('../middleware/auth');
 
-function log(db, type, entity, entity_id, label, meta = {}) {
+function log(db, userId, type, entity, entity_id, label, meta = {}) {
   try {
     db.run(
-      "INSERT INTO activity_log (type, entity, entity_id, label, meta) VALUES (?, ?, ?, ?, ?)",
-      [type, entity, entity_id, label, JSON.stringify(meta)]
+      "INSERT INTO activity_log (user_id, type, entity, entity_id, label, meta) VALUES (?, ?, ?, ?, ?, ?)",
+      [userId, type, entity, entity_id, label, JSON.stringify(meta)]
     );
   } catch (err) {
     console.error(`[ACTIVITY LOG ERROR] ${err.message}`);
   }
 }
 
+router.use(authenticateToken);
+
 // GET /api/todos
 router.get('/', (req, res) => {
   const { all } = req.app.locals.db;
-  // Change "ORDER BY created_at DESC" to "ORDER BY order_index ASC"
-  const rows = all('SELECT * FROM todos ORDER BY order_index ASC');
+  const userId = req.user.id;
+  const rows = all('SELECT * FROM todos WHERE user_id = ? ORDER BY order_index ASC', [userId]);
   
-  // PARSE tags from String to Array for React
   const formatted = rows.map(row => ({
     ...row,
     tags: JSON.parse(row.tags || '[]')
@@ -29,18 +31,18 @@ router.get('/', (req, res) => {
 // POST /api/todos
 router.post('/', (req, res) => {
   const db = req.app.locals.db;
+  const userId = req.user.id;
   const { title, priority, due_date, tags, status, description } = req.body;
   
-  // 1. Get the current minimum order_index to place the new todo at the top
-  const minOrder = db.get('SELECT MIN(order_index) as min_idx FROM todos');
+  const minOrder = db.get('SELECT MIN(order_index) as min_idx FROM todos WHERE user_id = ?', [userId]);
   const newOrderIndex = (minOrder && minOrder.min_idx !== null) ? minOrder.min_idx - 1 : 0;
 
   const defaultStatus = status || 'Not Started';
 
-  // 2. Insert with the new order_index
   const { lastInsertRowid } = db.run(
-    "INSERT INTO todos (title, priority, due_date, tags, order_index, status, description) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO todos (user_id, title, priority, due_date, tags, order_index, status, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     [
+      userId,
       title, 
       priority || 'medium', 
       due_date || null, 
@@ -51,22 +53,22 @@ router.post('/', (req, res) => {
     ]
   );
 
-  log(db, 'todo_created', 'todo', lastInsertRowid, `Created todo: ${title}`);
+  log(db, userId, 'todo_created', 'todo', lastInsertRowid, `Created todo: ${title}`);
   
-  const newTodo = db.get('SELECT * FROM todos WHERE id = ?', [lastInsertRowid]);
+  const newTodo = db.get('SELECT * FROM todos WHERE id = ? AND user_id = ?', [lastInsertRowid, userId]);
   res.status(201).json({ ...newTodo, tags: JSON.parse(newTodo.tags || '[]') });
 });
 
 // PUT /api/todos/reorder
 router.put('/reorder', (req, res) => {
   const { run } = req.app.locals.db;
-  const { ids } = req.body; // Expecting an array of IDs in the new order
+  const userId = req.user.id;
+  const { ids } = req.body;
 
   if (!Array.isArray(ids)) return res.status(400).json({ error: 'Invalid IDs' });
 
-  // Update each todo with its new index based on the array position
   ids.forEach((id, index) => {
-    run('UPDATE todos SET order_index = ? WHERE id = ?', [index, id]);
+    run('UPDATE todos SET order_index = ? WHERE id = ? AND user_id = ?', [index, id, userId]);
   });
 
   res.json({ success: true });
@@ -74,18 +76,18 @@ router.put('/reorder', (req, res) => {
 
 // PUT /api/todos/kanban-reorder
 router.put('/kanban-reorder', (req, res) => {
-  const { run, db } = req.app.locals.db;
-  const { columns } = req.body; // { 'Not Started': [id1, id2], 'In Progress': [id3] }
+  const { run } = req.app.locals.db;
+  const userId = req.user.id;
+  const { columns } = req.body;
 
   if (!columns || typeof columns !== 'object') return res.status(400).json({ error: 'Invalid columns' });
 
-  // Update status and kanban_order_index for all items in each column
   Object.entries(columns).forEach(([status, ids]) => {
     if (!Array.isArray(ids)) return;
     ids.forEach((id, index) => {
-      // Also update 'completed' based on status if it's 'Merged/Completed'
       const completed = (status === 'Merged/Completed' ? 1 : 0);
-      req.app.locals.db.run('UPDATE todos SET status = ?, kanban_order_index = ?, completed = ? WHERE id = ?', [status, index, completed, id]);
+      run('UPDATE todos SET status = ?, kanban_order_index = ?, completed = ? WHERE id = ? AND user_id = ?', 
+        [status, index, completed, id, userId]);
     });
   });
 
@@ -95,21 +97,19 @@ router.put('/kanban-reorder', (req, res) => {
 // PATCH /api/todos/:id
 router.patch('/:id', (req, res) => {
   const db = req.app.locals.db;
-  const todo = db.get('SELECT * FROM todos WHERE id = ?', [req.params.id]);
+  const userId = req.user.id;
+  const todo = db.get('SELECT * FROM todos WHERE id = ? AND user_id = ?', [req.params.id, userId]);
   if (!todo) return res.status(404).json({ error: 'Todo not found' });
 
   let { title, completed, priority, due_date, tags, status, description } = req.body;
 
-  // Sync logic: If completed is updated, update status
   if (completed !== undefined && status === undefined) {
     status = completed ? 'Merged/Completed' : 'Not Started';
   }
-  // If status is updated, update completed
   if (status !== undefined && completed === undefined) {
     completed = (status === 'Merged/Completed');
   }
 
-  // Log activity BEFORE the update to have original state
   let activityType = null;
   let activityLabel = null;
 
@@ -117,7 +117,6 @@ router.patch('/:id', (req, res) => {
     activityType = 'todo_updated';
     activityLabel = `Changed status to "${status}" for: ${todo.title}`;
     
-    // Check if it's a completion/reopen via status
     if (status === 'Merged/Completed' && todo.status !== 'Merged/Completed') {
       activityType = 'todo_completed';
       activityLabel = `Completed todo: ${todo.title}`;
@@ -141,7 +140,7 @@ router.patch('/:id', (req, res) => {
   }
 
   if (activityType) {
-    log(db, activityType, 'todo', parseInt(req.params.id), activityLabel);
+    log(db, userId, activityType, 'todo', parseInt(req.params.id), activityLabel);
   }
 
   const completedVal = completed !== undefined ? (completed ? 1 : 0) : todo.completed;
@@ -155,7 +154,7 @@ router.patch('/:id', (req, res) => {
     tags = ?, 
     description = ?,
     updated_at = datetime('now') 
-    WHERE id = ?`,
+    WHERE id = ? AND user_id = ?`,
     [
       title ?? todo.title,
       completedVal,
@@ -164,30 +163,27 @@ router.patch('/:id', (req, res) => {
       due_date ?? todo.due_date,
       tags ? JSON.stringify(tags) : todo.tags,
       description ?? todo.description,
-      req.params.id
+      req.params.id,
+      userId
     ]
   );
 
-  const updated = db.get('SELECT * FROM todos WHERE id = ?', [req.params.id]);
-  res.json({ ...updated, tags: JSON.parse(updated.tags || '[]') }); // PARSE here
+  const updated = db.get('SELECT * FROM todos WHERE id = ? AND user_id = ?', [req.params.id, userId]);
+  res.json({ ...updated, tags: JSON.parse(updated.tags || '[]') });
 });
 
 // DELETE /api/todos/:id
 router.delete('/:id', (req, res) => {
   const db = req.app.locals.db;
+  const userId = req.user.id;
   const { id } = req.params;
 
-  // Optional: Log the deletion to your activity history
-  const todo = db.get('SELECT title FROM todos WHERE id = ?', [id]);
-  if (todo) {
-    log(db, 'todo_deleted', 'todo', id, `Deleted todo: ${todo.title}`);
-  }
+  const todo = db.get('SELECT title FROM todos WHERE id = ? AND user_id = ?', [id, userId]);
+  if (!todo) return res.status(404).json({ error: 'Todo not found' });
 
-  // Perform the actual deletion
-  db.run('DELETE FROM todos WHERE id = ?', [id]);
+  log(db, userId, 'todo_deleted', 'todo', id, `Deleted todo: ${todo.title}`);
+  db.run('DELETE FROM todos WHERE id = ? AND user_id = ?', [id, userId]);
 
-  // Send 204 No Content. 
-  // This tells the frontend "I did it, and there's nothing more to say."
   res.status(204).end();
 });
 

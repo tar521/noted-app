@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api';
+import { useAuth } from '../context/AuthContext';
 
 const FOLDER_COLORS = ['#6366f1','#a78bfa','#f472b6','#34d399','#fb923c','#60a5fa','#facc15','#f87171'];
 
@@ -17,6 +18,8 @@ export default function Sidebar({ tab, setTab, folders, setFolders, activeFolder
   const [pickedColor, setPickedColor] = useState(FOLDER_COLORS[0]);
   const [editingFolder, setEditingFolder] = useState(null);
   const [editName, setEditName] = useState('');
+
+  const { user, logout } = useAuth();
 
   async function createFolder(e) {
     e.preventDefault();
@@ -136,9 +139,29 @@ export default function Sidebar({ tab, setTab, folders, setFolders, activeFolder
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="px-5 py-3 border-t border-surface-3">
-        <p className="text-xs text-ink-faint">Double-click folder to rename</p>
+      {/* Footer / User Profile */}
+      <div className="px-3 py-4 border-t border-surface-3 bg-surface-1/50">
+        <div className="flex items-center gap-3 px-2 mb-3">
+          <div className="w-8 h-8 rounded-full bg-accent-glow flex items-center justify-center text-accent border border-accent/20 overflow-hidden text-[10px] font-bold">
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+            ) : (
+              <span>{(user?.name || 'U').charAt(0).toUpperCase()}</span>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-white truncate">{user?.name || 'User'}</p>
+            <p className="text-[10px] text-ink-faint truncate">{user?.email}</p>
+          </div>
+        </div>
+        
+        <button
+          onClick={logout}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium text-ink-muted hover:text-priority-urgent hover:bg-priority-urgent/5 transition-all"
+        >
+          <span className="text-sm">⎗</span>
+          Logout
+        </button>
       </div>
     </aside>
   );
