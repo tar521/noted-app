@@ -13,11 +13,11 @@ export default defineConfig({
     port: 5173,
     // Add allowedHosts here to fix the "Host not allowed" error
     // This forces Vite to use 127.0.0.1 instead of [::1]
-    host: '127.0.0.1',
-    allowedHosts: ['notes-app', 'localhost', '127.0.0.1'],
+    host: '0.0.0.0', // Listen on all network interfaces
+    allowedHosts: ['notes-app', 'localhost', '127.0.0.1', '10.238.137.13', '10.238.137.13.sslip.io'],
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: process.env.VITE_API_URL || 'http://backend:3001',
         changeOrigin: true,
       }
     }
